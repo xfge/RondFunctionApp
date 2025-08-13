@@ -32,7 +32,7 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
         // Payload with fixed values and user-provided parameters
         const payload = {
             include_aliases: {
-                external_id: [userId]
+                onesignal_id: [userId]
             },
             event: "start",
             activity_id: activityId,
@@ -40,7 +40,7 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
             event_updates: {
                 "timestamp": Math.floor(Date.now() / 1000)
             },
-            name: "Live Activity Start",
+            name: "Start Live Activity",
             contents: {
                 en: "Live Activity Started"
             },

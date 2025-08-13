@@ -1,9 +1,17 @@
 {
-  "activity_id": "test-activity-123",
-  "user_id": "user-123",
-  "activity_type": "OneSignalWidgetAttributes",
+  "activity_id": "<activity_id>",
+  "user_id": "<user_id>",
+  "activity_type": "<activity_type>",
   "event_attributes": {
-    "score": 100,
-    "level": 5
+    "arrivalEpoch": 1755091826,
+    "locationName": "菁星公寓B区",
+    "activityName": "家",
+    "iconName": "🏠",
+    "rgbaColor": {
+      "red": 0.5568627450980392,
+      "green": 0.5568627450980392,
+      "blue": 0.5764705882352941,
+      "alpha": 1
+    }
   }
 }
