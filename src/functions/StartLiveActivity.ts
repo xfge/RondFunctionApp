@@ -16,18 +16,17 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
         const body = await parseRequestBody(request);
         
         // Validate required parameters
-        const validation = validateRequestBody(body, ['activity_id', 'user_id']);
+        const validation = validateRequestBody(body, ['activity_id', 'user_id', 'activity_type']);
         if (!validation.isValid) {
             return createErrorResponse(400, validation.error!);
         }
 
-        const { activity_id: activityId, user_id: userId, event_attributes: eventAttributes = {} } = body;
+        const { activity_id: activityId, user_id: userId, activity_type: activityType, event_attributes: eventAttributes = {} } = body;
 
         // Get OneSignal configuration
         const config = getOneSignalConfig();
 
-        // OneSignal API URL - using a fixed activity_type value
-        const activityType = "OneSignalWidgetAttributes"; // Fixed activity type
+        // OneSignal API URL - using activity_type from request
         const url = `https://api.onesignal.com/apps/${config.appId}/activities/activity/${activityType}`;
 
         // Payload with fixed values and user-provided parameters
@@ -57,11 +56,12 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
             return createErrorResponse(500, result.error!, result.details);
         }
 
-        context.log(`Successfully started live activity ${activityId} for user ${userId}`);
+        context.log(`Successfully started live activity ${activityId} for user ${userId} with activity type ${activityType}`);
         
         return createSuccessResponse({
             activity_id: activityId,
             user_id: userId,
+            activity_type: activityType,
             response: result.data
         });
 
