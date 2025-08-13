@@ -1,28 +1,33 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
+import { 
+    getOneSignalConfig, 
+    validateRequestBody, 
+    callOneSignalAPI, 
+    createErrorResponse, 
+    createSuccessResponse,
+    parseRequestBody 
+} from "../utils/oneSignalClient";
 
 export async function EndLiveActivity(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
     context.log(`EndLiveActivity function processed request for url "${request.url}"`);
 
     try {
-        // Extract activity_id from POST request body
-        const body = await request.json().catch(() => ({})) as any;
-        const activityId = body.activity_id;
-
-        if (!activityId) {
-            return {
-                status: 400,
-                body: JSON.stringify({
-                    error: "activity_id parameter is required in request body"
-                })
-            };
+        // Parse request body
+        const body = await parseRequestBody(request);
+        
+        // Validate required parameters
+        const validation = validateRequestBody(body, ['activity_id']);
+        if (!validation.isValid) {
+            return createErrorResponse(400, validation.error!);
         }
 
-        // Environment variables
-        const appId = process.env.ONESIGNAL_APP_ID;
-        const apiKey = process.env.ONESIGNAL_API_KEY;
+        const { activity_id: activityId } = body;
+
+        // Get OneSignal configuration
+        const config = getOneSignalConfig();
 
         // OneSignal API URL
-        const url = `https://api.onesignal.com/apps/${appId}/live_activities/${activityId}/notifications`;
+        const url = `https://api.onesignal.com/apps/${config.appId}/live_activities/${activityId}/notifications`;
 
         // Default payload
         const payload = {
@@ -38,48 +43,22 @@ export async function EndLiveActivity(request: HttpRequest, context: InvocationC
         };
 
         // Make the request to OneSignal
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Basic ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
+        const result = await callOneSignalAPI(url, payload, config, context);
 
-        const responseData = await response.json();
-
-        if (!response.ok) {
-            context.log(`OneSignal API error: ${response.status} - ${JSON.stringify(responseData)}`);
-            return {
-                status: response.status,
-                body: JSON.stringify({
-                    error: "Failed to end live activity",
-                    details: responseData
-                })
-            };
+        if (!result.success) {
+            return createErrorResponse(500, result.error!, result.details);
         }
 
         context.log(`Successfully ended live activity ${activityId}`);
         
-        return {
-            status: 200,
-            body: JSON.stringify({
-                success: true,
-                activity_id: activityId,
-                response: responseData
-            })
-        };
+        return createSuccessResponse({
+            activity_id: activityId,
+            response: result.data
+        });
 
     } catch (error) {
         context.log(`Error in EndLiveActivity: ${error.message}`);
-        return {
-            status: 500,
-            body: JSON.stringify({
-                error: "Internal server error",
-                message: error.message
-            })
-        };
+        return createErrorResponse(500, "Internal server error", error.message);
     }
 }
 
