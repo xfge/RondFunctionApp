@@ -28,11 +28,11 @@ export async function EndLiveActivity(request: HttpRequest, context: InvocationC
         const payload = {
             event: "end",
             event_updates: {
-                activity_id: activityId
+                "timestamp": Math.floor(Date.now() / 1000)
             },
             name: "Live Activity End",
             contents: {
-                en: "Live Activity End"
+                en: "Live Activity Ended"
             },
             dismissal_date: Math.floor(Date.now() / 1000),
         };

@@ -1,0 +1,8 @@
+{
+  "activity_id": "test-activity-123",
+  "user_id": "user-123", 
+  "event_attributes": {
+    "score": 100,
+    "level": 5
+  }
+}
