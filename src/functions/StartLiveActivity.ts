@@ -21,7 +21,7 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
             return createErrorResponse(400, validation.error!);
         }
 
-        const { activity_id: activityId, user_id: userId, activity_type: activityType, event_attributes: eventAttributes = {} } = body;
+        const { activity_id: activityId, user_id: userId, activity_type: activityType, event_attributes: eventAttributes = {}, ios_relevance_score: iosRelevanceScore } = body;
 
         // Get OneSignal configuration
         const config = getOneSignalConfig();
@@ -47,6 +47,7 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
             headings: {
                 en: "Live Activity"
             },
+            ...(iosRelevanceScore !== undefined && { ios_relevance_score: iosRelevanceScore })
         };
 
         // Make the request to OneSignal
