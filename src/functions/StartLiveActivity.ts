@@ -45,7 +45,9 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
             event: "start",
             activity_id: activityId,
             event_attributes: eventAttributes,
-            event_updates: {},
+            event_updates: {
+                "timestamp": Math.floor(Date.now() / 1000)
+            },
             name: "Start Live Activity",
             contents: {
                 en: "Live Activity Started"
