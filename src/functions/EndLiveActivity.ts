@@ -8,6 +8,43 @@ import {
     parseRequestBody 
 } from "../utils/oneSignalClient";
 
+/**
+ * Core function to end a live activity
+ * Can be called internally or via HTTP request
+ */
+export async function endLiveActivityCore(
+    activityId: string,
+    dismissalDate?: number,
+    context?: InvocationContext
+): Promise<{ success: boolean; data?: any; error?: string }> {
+    const config = getOneSignalConfig();
+    const url = `https://api.onesignal.com/apps/${config.appId}/live_activities/${activityId}/notifications`;
+
+    const payload = {
+        event: "end",
+        event_updates: {
+            "timestamp": Math.floor(Date.now() / 1000)
+        },
+        name: "Live Activity End",
+        contents: {
+            en: "Live Activity Ended"
+        },
+        dismissal_date: dismissalDate ?? Math.floor(Date.now() / 1000),
+    };
+
+    const result = await callOneSignalAPI(url, payload, config, context);
+    
+    if (context) {
+        if (result.success) {
+            context.log(`Successfully ended live activity ${activityId}`);
+        } else {
+            context.log(`Failed to end live activity ${activityId}: ${result.error}`);
+        }
+    }
+    
+    return result;
+}
+
 export async function EndLiveActivity(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
     context.log(`EndLiveActivity function processed request for url "${request.url}"`);
 
@@ -21,35 +58,14 @@ export async function EndLiveActivity(request: HttpRequest, context: InvocationC
             return createErrorResponse(400, validation.error!);
         }
 
-        const { activity_id: activityId } = body;
+        const { activity_id: activityId, dismissal_date: dismissalDate } = body;
 
-        // Get OneSignal configuration
-        const config = getOneSignalConfig();
-
-        // OneSignal API URL
-        const url = `https://api.onesignal.com/apps/${config.appId}/live_activities/${activityId}/notifications`;
-
-        // Default payload
-        const payload = {
-            event: "end",
-            event_updates: {
-                "timestamp": Math.floor(Date.now() / 1000)
-            },
-            name: "Live Activity End",
-            contents: {
-                en: "Live Activity Ended"
-            },
-            dismissal_date: Math.floor(Date.now() / 1000),
-        };
-
-        // Make the request to OneSignal
-        const result = await callOneSignalAPI(url, payload, config, context);
+        // Call core function
+        const result = await endLiveActivityCore(activityId, dismissalDate, context);
 
         if (!result.success) {
-            return createErrorResponse(500, result.error!, result.details);
+            return createErrorResponse(500, result.error!, result.data);
         }
-
-        context.log(`Successfully ended live activity ${activityId}`);
         
         return createSuccessResponse({
             activity_id: activityId,

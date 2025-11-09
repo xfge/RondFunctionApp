@@ -7,6 +7,7 @@ import {
     createSuccessResponse,
     parseRequestBody 
 } from "../utils/oneSignalClient";
+import { endLiveActivityCore } from "./EndLiveActivity";
 
 export async function StartLiveActivity(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
     context.log(`StartLiveActivity function processed request for url "${request.url}"`);
@@ -21,7 +22,14 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
             return createErrorResponse(400, validation.error!);
         }
 
-        const { activity_id: activityId, user_id: userId, activity_type: activityType, event_attributes: eventAttributes = {}, ios_relevance_score: iosRelevanceScore } = body;
+        const { 
+            activity_id: activityId, 
+            user_id: userId, 
+            activity_type: activityType, 
+            event_attributes: eventAttributes = {}, 
+            ios_relevance_score: iosRelevanceScore,
+            duration 
+        } = body;
 
         // Get OneSignal configuration
         const config = getOneSignalConfig();
@@ -58,6 +66,27 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
         }
 
         context.log(`Successfully started live activity ${activityId} for user ${userId} with activity type ${activityType}`);
+        
+        // If duration is provided and valid, schedule auto-end after 1 second
+        if (duration !== undefined && duration !== null && duration > 0) {
+            const arrivalTimestamp = eventAttributes?.visit?.arrival;
+            
+            if (arrivalTimestamp) {
+                const dismissalDate = arrivalTimestamp + duration;
+                context.log(`Scheduling auto-end for activity ${activityId} after 1 second with dismissal_date ${dismissalDate}`);
+                
+                // Wait 1 second then send end request
+                setTimeout(async () => {
+                    try {
+                        await endLiveActivityCore(activityId, dismissalDate, context);
+                    } catch (error) {
+                        context.log(`Error in auto-ending live activity: ${error.message}`);
+                    }
+                }, 1000);
+            } else {
+                context.log(`Warning: duration provided but visit.arrival not found in event_attributes`);
+            }
+        }
         
         return createSuccessResponse({
             activity_id: activityId,
