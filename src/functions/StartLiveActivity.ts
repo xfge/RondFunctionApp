@@ -72,7 +72,7 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
             const arrivalTimestamp = eventAttributes?.visit?.arrival;
             
             if (arrivalTimestamp) {
-                const dismissalDate = arrivalTimestamp + duration;
+                const dismissalDate = Math.floor(arrivalTimestamp + duration);
                 context.log(`Waiting 1 second before ending activity ${activityId} with dismissal_date ${dismissalDate}`);
                 
                 // Wait 1 second synchronously
