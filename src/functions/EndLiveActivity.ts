@@ -22,9 +22,7 @@ export async function endLiveActivityCore(
 
     const payload = {
         event: "end",
-        event_updates: {
-            "timestamp": Math.floor(Date.now() / 1000)
-        },
+        event_updates: {},
         name: "Live Activity End",
         contents: {
             en: "Live Activity Ended"
