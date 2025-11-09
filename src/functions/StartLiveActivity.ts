@@ -67,22 +67,23 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
 
         context.log(`Successfully started live activity ${activityId} for user ${userId} with activity type ${activityType}`);
         
-        // If duration is provided and valid, schedule auto-end after 1 second
+        // If duration is provided and valid, wait 1 second then send end request
         if (duration !== undefined && duration !== null && duration > 0) {
             const arrivalTimestamp = eventAttributes?.visit?.arrival;
             
             if (arrivalTimestamp) {
                 const dismissalDate = arrivalTimestamp + duration;
-                context.log(`Scheduling auto-end for activity ${activityId} after 1 second with dismissal_date ${dismissalDate}`);
+                context.log(`Waiting 1 second before ending activity ${activityId} with dismissal_date ${dismissalDate}`);
                 
-                // Wait 1 second then send end request
-                setTimeout(async () => {
-                    try {
-                        await endLiveActivityCore(activityId, dismissalDate, context);
-                    } catch (error) {
-                        context.log(`Error in auto-ending live activity: ${error.message}`);
-                    }
-                }, 1000);
+                // Wait 1 second synchronously
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                try {
+                    context.log(`Now sending end request for activity ${activityId}`);
+                    await endLiveActivityCore(activityId, dismissalDate, context);
+                } catch (error) {
+                    context.log(`Error in auto-ending live activity: ${error.message}`);
+                }
             } else {
                 context.log(`Warning: duration provided but visit.arrival not found in event_attributes`);
             }
