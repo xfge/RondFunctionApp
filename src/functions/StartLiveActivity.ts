@@ -66,18 +66,18 @@ export async function StartLiveActivity(request: HttpRequest, context: Invocatio
         }
 
         context.log(`Successfully started live activity ${activityId} for user ${userId} with activity type ${activityType}`);
-        
-        // If duration is provided and valid, wait 1 second then send end request
+
+        // If duration is provided and valid, wait 5s then send end request
         if (duration !== undefined && duration !== null && duration > 0) {
             const arrivalTimestamp = eventAttributes?.visit?.arrival;
             
             if (arrivalTimestamp) {
                 const dismissalDate = Math.floor(arrivalTimestamp + duration);
-                context.log(`Waiting 1 second before ending activity ${activityId} with dismissal_date ${dismissalDate}`);
-                
-                // Wait 1 second synchronously
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
+                context.log(`Waiting 5s before ending activity ${activityId} with dismissal_date ${dismissalDate}`);
+
+                // Wait 5s synchronously
+                await new Promise(resolve => setTimeout(resolve, 5000));
+
                 try {
                     context.log(`Now sending end request for activity ${activityId}`);
                     await endLiveActivityCore(activityId, dismissalDate, context);
