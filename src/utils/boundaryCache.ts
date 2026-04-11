@@ -1,5 +1,5 @@
 import { BlobServiceClient, ContainerClient } from "@azure/storage-blob";
-import { DefaultAzureCredential } from "@azure/identity";
+import { ManagedIdentityCredential } from "@azure/identity";
 
 const OSM_CONTAINER = "boundary-osm";
 const AMAP_CONTAINER = "boundary-amap";
@@ -16,8 +16,10 @@ function getBlobServiceClient(): BlobServiceClient {
 
     // Option 2: Managed identity (Azure deployment)
     const blobUri = process.env.AzureWebJobsStorage__blobServiceUri;
+    const clientId = process.env.AzureWebJobsStorage__clientId;
     if (blobUri) {
-        return new BlobServiceClient(blobUri, new DefaultAzureCredential());
+        const credential = new ManagedIdentityCredential(clientId);
+        return new BlobServiceClient(blobUri, credential);
     }
 
     throw new Error("No Azure Storage configuration found. Set AzureWebJobsStorage or AzureWebJobsStorage__blobServiceUri");
