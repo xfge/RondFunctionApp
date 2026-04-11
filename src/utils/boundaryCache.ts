@@ -1,4 +1,5 @@
 import { BlobServiceClient, ContainerClient } from "@azure/storage-blob";
+import { DefaultAzureCredential } from "@azure/identity";
 
 const OSM_CONTAINER = "boundary-osm";
 const AMAP_CONTAINER = "boundary-amap";
@@ -7,11 +8,19 @@ let osmContainer: ContainerClient | null = null;
 let amapContainer: ContainerClient | null = null;
 
 function getBlobServiceClient(): BlobServiceClient {
+    // Option 1: Connection string (local dev with Azurite)
     const connectionString = process.env.AzureWebJobsStorage;
-    if (!connectionString) {
-        throw new Error("AzureWebJobsStorage environment variable is not set");
+    if (connectionString) {
+        return BlobServiceClient.fromConnectionString(connectionString);
     }
-    return BlobServiceClient.fromConnectionString(connectionString);
+
+    // Option 2: Managed identity (Azure deployment)
+    const blobUri = process.env.AzureWebJobsStorage__blobServiceUri;
+    if (blobUri) {
+        return new BlobServiceClient(blobUri, new DefaultAzureCredential());
+    }
+
+    throw new Error("No Azure Storage configuration found. Set AzureWebJobsStorage or AzureWebJobsStorage__blobServiceUri");
 }
 
 async function getOSMContainer(): Promise<ContainerClient> {
