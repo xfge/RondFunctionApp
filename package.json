@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@azure/functions": "^4.0.0",
+    "@azure/storage-blob": "^12.27.0",
     "durable-functions": "^3.3.0"
   },
   "devDependencies": {
