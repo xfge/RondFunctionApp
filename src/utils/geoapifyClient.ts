@@ -3,19 +3,12 @@ import { fetchWithRetry } from "./httpUtils";
 
 const GEOAPIFY_BOUNDARIES_URL = "https://api.geoapify.com/v1/boundaries/part-of";
 
-/** City-states: hardcoded OSM relation IDs (skip Geoapify, save credits). */
-const CITY_STATE_OSM_IDS: Record<string, number> = {
-    HK: 913110,   // Hong Kong
-    MO: 1867188,  // Macau
-    SG: 536780,   // Singapore
-    MC: 1124039,  // Monaco
-};
-
 /** Geoapify category keys for city-level matching, in priority order. */
 const CITY_CATEGORIES = ["administrative.county_level", "administrative.city_level"];
 
 /**
  * Resolve coordinates + city name to an OSM relation ID and city metadata.
+ * City-states (HK, MO, SG, MC) should be handled by the caller before calling this.
  * Returns null if no matching feature is found.
  */
 export async function fetchGeoapifyMatch(
@@ -24,21 +17,6 @@ export async function fetchGeoapifyMatch(
     city: string,
     countryCode?: string,
 ): Promise<GeoapifyMatchResult | null> {
-    // Check hardcoded city-states first
-    if (countryCode) {
-        const code = countryCode.toUpperCase();
-        if (CITY_STATE_OSM_IDS[code]) {
-            return {
-                osmId: CITY_STATE_OSM_IDS[code],
-                name: code,
-                nameInternational: {},
-                categories: [],
-                matchedBy: "hardcoded",
-                adminLevel: "2",
-            };
-        }
-    }
-
     const apiKey = process.env.GEOAPIFY_API_KEY;
     if (!apiKey) {
         throw new Error("GEOAPIFY_API_KEY environment variable is not set");

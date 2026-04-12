@@ -5,6 +5,7 @@ export interface CityBoundaryRequest {
     lng: number;
     city: string;
     country_code?: string;
+    device_region?: string;
 }
 
 // --- Geoapify ---
