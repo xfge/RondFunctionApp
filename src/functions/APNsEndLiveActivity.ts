@@ -46,7 +46,8 @@ export async function APNsEndLiveActivity(
     request: HttpRequest,
     context: InvocationContext
 ): Promise<HttpResponseInit> {
-    context.log(`APNsEndLiveActivity function processed request for url "${request.url}"`);
+    const requestId = request.headers.get('x-request-id') ?? 'unknown';
+    context.log(`APNsEndLiveActivity [${requestId}] processing request`);
 
     try {
         const body = await parseRequestBody(request);
@@ -86,7 +87,7 @@ export async function APNsEndLiveActivity(
             response: result.data,
         });
     } catch (error) {
-        context.log(`Error in APNsEndLiveActivity: ${error.message}`);
+        context.log(`APNsEndLiveActivity [${requestId}] error: ${error.message}`);
         return createErrorResponse(500, "Internal server error", error.message);
     }
 }

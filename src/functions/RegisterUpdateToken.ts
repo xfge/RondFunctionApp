@@ -13,7 +13,8 @@ export async function RegisterUpdateToken(
     client: df.DurableClient,
     context: InvocationContext
 ): Promise<HttpResponseInit> {
-    context.log(`RegisterUpdateToken function processed request for url "${request.url}"`);
+    const requestId = request.headers.get('x-request-id') ?? 'unknown';
+    context.log(`RegisterUpdateToken [${requestId}] processing request`);
 
     try {
         const body = await parseRequestBody(request);
@@ -54,7 +55,7 @@ export async function RegisterUpdateToken(
             },
         });
 
-        context.log(`Started orchestration ${instanceId} for token ${updateToken.substring(0, 8)}... — end push in ${delaySeconds}s (at ${dismissalDate})`);
+        context.log(`RegisterUpdateToken [${requestId}] started orchestration ${instanceId} for token ${updateToken.substring(0, 8)}... — end push in ${delaySeconds}s (at ${dismissalDate})`);
 
         return createSuccessResponse({
             update_token: updateToken,
@@ -63,7 +64,7 @@ export async function RegisterUpdateToken(
             instance_id: instanceId,
         });
     } catch (error) {
-        context.log(`Error in RegisterUpdateToken: ${error.message}`);
+        context.log(`RegisterUpdateToken [${requestId}] error: ${error.message}`);
         return createErrorResponse(500, "Internal server error", error.message);
     }
 }

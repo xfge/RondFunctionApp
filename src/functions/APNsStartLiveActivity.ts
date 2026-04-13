@@ -11,7 +11,8 @@ export async function APNsStartLiveActivity(
     request: HttpRequest,
     context: InvocationContext
 ): Promise<HttpResponseInit> {
-    context.log(`APNsStartLiveActivity function processed request for url "${request.url}"`);
+    const requestId = request.headers.get('x-request-id') ?? 'unknown';
+    context.log(`APNsStartLiveActivity [${requestId}] processing request`);
 
     try {
         const body = await parseRequestBody(request);
@@ -60,14 +61,14 @@ export async function APNsStartLiveActivity(
             return createErrorResponse(result.statusCode ?? 500, result.error!, result.reason);
         }
 
-        context.log('Successfully started live activity via APNs');
+        context.log(`APNsStartLiveActivity [${requestId}] success`);
 
         return createSuccessResponse({
             push_token: pushToken,
             response: result.data,
         });
     } catch (error) {
-        context.log(`Error in APNsStartLiveActivity: ${error.message}`);
+        context.log(`APNsStartLiveActivity [${requestId}] error: ${error.message}`);
         return createErrorResponse(500, "Internal server error", error.message);
     }
 }
