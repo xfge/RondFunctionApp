@@ -12,6 +12,9 @@ export interface CityBoundaryRequest {
 
 export interface GeoapifyFeature {
     type: string;
+    geometry?: {
+        type?: string;
+    };
     properties: {
         name?: string;
         name_international?: Record<string, string>;

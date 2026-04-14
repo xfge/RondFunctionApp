@@ -16,6 +16,7 @@ export async function fetchGeoapifyMatch(
     lng: number,
     city: string,
     countryCode?: string,
+    log?: (...args: any[]) => void,
 ): Promise<GeoapifyMatchResult | null> {
     const apiKey = process.env.GEOAPIFY_API_KEY;
     if (!apiKey) {
@@ -29,9 +30,17 @@ export async function fetchGeoapifyMatch(
     url.searchParams.set("apiKey", apiKey);
 
     const data = await fetchWithRetry(url.toString()) as GeoapifyResponse | null;
-    if (!data?.features?.length) return null;
 
-    return extractMatch(data.features, city);
+    const featureCount = data?.features?.length ?? 0;
+    const featureDetails = (data?.features ?? []).map(f => {
+        const p = f.properties;
+        return `"${p.name}" geo=${f.geometry?.type ?? "?"} categories=[${p.categories?.join(", ") ?? ""}] osm_id=${p.datasource?.raw?.osm_id ?? "?"} admin_level=${p.datasource?.raw?.admin_level ?? "?"}`;
+    });
+    log?.(`Geoapify: lat=${lat} lng=${lng} city="${city}" countryCode=${countryCode ?? "none"} | ${featureCount} features: [${featureDetails.join(" | ")}]`);
+
+    if (!featureCount) return null;
+
+    return extractMatch(data!.features, city);
 }
 
 /** Pick the matching feature by name or category and return its OSM relation ID. */
