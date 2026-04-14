@@ -41,7 +41,7 @@ export async function CityBoundary(
 
         // If no pre-resolved osmId, call Geoapify
         if (osmId == null) {
-            const match = await fetchGeoapifyMatch(lat, lng, city, countryCode, context.log);
+            const match = await fetchGeoapifyMatch(lat, lng, city, countryCode, (...args) => context.log(...args));
             if (!match) {
                 return createErrorResponse(404, "No city boundary found for the given coordinates and city name");
             }
