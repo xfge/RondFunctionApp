@@ -25,6 +25,7 @@ export async function fetchGeoapifyMatch(
     const url = new URL(GEOAPIFY_BOUNDARIES_URL);
     url.searchParams.set("lon", String(lng));
     url.searchParams.set("lat", String(lat));
+    url.searchParams.set("geometry", "point");
     url.searchParams.set("apiKey", apiKey);
 
     const data = await fetchWithRetry(url.toString()) as GeoapifyResponse | null;
