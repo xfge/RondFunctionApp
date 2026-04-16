@@ -112,11 +112,11 @@ async function queryBoundary(
             `SELECT osm_id, name, admin_level, geojson
              FROM city_boundaries
              WHERE ST_Contains(geom, ${point})
-               AND $5 = ANY(search_names)
+               AND $3 = ANY(search_names)
                AND ($4::varchar IS NULL OR country_code = $4)
              ORDER BY admin_level DESC
              LIMIT 1`,
-            [lng, lat, city, countryCode, area]
+            [lng, lat, area, countryCode]
         );
         if (areaRows[0]) return { result: areaRows[0], matchedBy: "area" };
     }
