@@ -26,7 +26,7 @@ export async function CityBoundary(
             return createErrorResponse(400, validation.error!);
         }
 
-        const { lat, lng, city, country_code: countryCode, device_region: deviceRegion } = body;
+        const { lat, lng, city, country_code: countryCode, device_region: deviceRegion, area } = body;
 
         if (typeof lat !== 'number' || lat < -90 || lat > 90) {
             return createErrorResponse(400, "lat must be a number between -90 and 90");
@@ -41,7 +41,7 @@ export async function CityBoundary(
 
         // If no pre-resolved osmId, call Geoapify
         if (osmId == null) {
-            const match = await fetchGeoapifyMatch(lat, lng, city, countryCode, (...args) => context.log(...args));
+            const match = await fetchGeoapifyMatch(lat, lng, city, countryCode, area, (...args) => context.log(...args));
             if (!match) {
                 return createErrorResponse(404, "No city boundary found for the given coordinates and city name");
             }

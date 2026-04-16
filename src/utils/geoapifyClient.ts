@@ -16,6 +16,7 @@ export async function fetchGeoapifyMatch(
     lng: number,
     city: string,
     countryCode?: string,
+    area?: string,
     log?: (...args: any[]) => void,
 ): Promise<GeoapifyMatchResult | null> {
     const apiKey = process.env.GEOAPIFY_API_KEY;
@@ -40,32 +41,59 @@ export async function fetchGeoapifyMatch(
 
     if (!featureCount) return null;
 
-    return extractMatch(data!.features, city);
+    return extractMatch(data!.features, city, area);
 }
 
-/** Pick the matching feature by name or category and return its OSM relation ID. */
-function extractMatch(features: GeoapifyFeature[], city: string): GeoapifyMatchResult | null {
-    // Primary: match by name (local + all international names)
-    const nameMatch = features.find((feature) => {
+/** Pick the matching feature by name, area, category, or admin_level and return its OSM relation ID. */
+function extractMatch(features: GeoapifyFeature[], city: string, area?: string): GeoapifyMatchResult | null {
+    const cityLower = city.toLowerCase();
+
+    /** Check if any of a feature's names match the given target (case-insensitive). */
+    const featureNamesMatch = (feature: GeoapifyFeature, target: string): boolean => {
         const props = feature.properties;
         const names: string[] = [];
         if (props.name) names.push(props.name);
         if (props.name_international) {
             names.push(...Object.values(props.name_international));
         }
-        return names.includes(city);
-    });
+        return names.some((n) => n.toLowerCase() === target);
+    };
 
-    const matchedBy = nameMatch ? "name" : "category";
+    // 1. Name match: city name against feature names (case-insensitive)
+    const nameMatch = features.find((f) => featureNamesMatch(f, cityLower));
 
-    // Fallback: match by category
-    const match = nameMatch ?? features.find((feature) => {
+    // 2. Area match: area name against feature names (case-insensitive)
+    const areaMatch = !nameMatch && area
+        ? features.find((f) => featureNamesMatch(f, area.toLowerCase()))
+        : undefined;
+
+    // 3. Category match
+    const categoryMatch = !nameMatch && !areaMatch ? features.find((feature) => {
         const cats = feature.properties.categories;
         if (!cats) return false;
         return CITY_CATEGORIES.some((c) => cats.includes(c));
-    });
+    }) : undefined;
 
+    // 4. Fallback: most specific boundary (highest admin_level ≤ 8, skipping sub-city wards/neighborhoods)
+    const fallbackMatch = !nameMatch && !areaMatch && !categoryMatch
+        ? [...features]
+              .filter((f) => {
+                  const level = f.properties.datasource?.raw?.admin_level ?? 0;
+                  return f.properties.datasource?.raw?.osm_id != null && level <= 8;
+              })
+              .sort((a, b) =>
+                  (b.properties.datasource?.raw?.admin_level ?? 0) -
+                  (a.properties.datasource?.raw?.admin_level ?? 0))
+              [0] ?? null
+        : null;
+
+    const match = nameMatch ?? areaMatch ?? categoryMatch ?? fallbackMatch;
     if (!match) return null;
+
+    const matchedBy = nameMatch ? "name"
+        : areaMatch ? "name"
+        : categoryMatch ? "category"
+        : "admin_level";
 
     const props = match.properties;
     const osmId = props.datasource?.raw?.osm_id;
@@ -76,7 +104,7 @@ function extractMatch(features: GeoapifyFeature[], city: string): GeoapifyMatchR
         name: props.name ?? "?",
         nameInternational: props.name_international ?? {},
         categories: props.categories ?? [],
-        matchedBy: matchedBy as 'name' | 'category',
+        matchedBy,
         adminLevel: String(props.datasource?.raw?.admin_level ?? "?"),
     };
 }
