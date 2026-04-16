@@ -34,6 +34,7 @@ export async function CityBoundaryDB(
         const result = await queryBoundary(lng, lat, city, countryCode ?? null);
 
         if (!result) {
+            context.log(`CityBoundaryDB: NO MATCH for city="${city}" lat=${lat} lng=${lng} country_code=${countryCode ?? "none"}`);
             return createErrorResponse(404, "No matching city boundary found in database");
         }
 
