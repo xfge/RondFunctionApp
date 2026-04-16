@@ -8,17 +8,26 @@
     "clean": "rimraf dist",
     "prestart": "npm run clean && npm run build",
     "start": "func start",
-    "test": "echo \"No tests yet...\""
+    "test": "echo \"No tests yet...\"",
+    "db:init": "tsx scripts/initDb.ts",
+    "db:migrate": "tsx scripts/migrateSchema.ts",
+    "db:load-us": "tsx scripts/loadUS.ts",
+    "db:load": "tsx scripts/loadBoundaries.ts",
+    "db:backfill-names": "tsx scripts/backfillNames.ts"
   },
   "dependencies": {
     "@azure/functions": "^4.0.0",
     "@azure/identity": "^4.6.0",
     "@azure/storage-blob": "^12.27.0",
-    "durable-functions": "^3.3.0"
+    "durable-functions": "^3.3.0",
+    "osmtogeojson": "^3.0.0-beta.5",
+    "pg": "^8.20.0"
   },
   "devDependencies": {
     "@types/node": "^22.x",
+    "@types/pg": "^8.20.0",
     "rimraf": "^5.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^4.0.0"
   },
   "main": "dist/src/{index.js,functions/*.js}"
