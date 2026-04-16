@@ -46,9 +46,11 @@ export async function CityBoundaryDB(
             admin_level: result.admin_level,
             geojson: result.geojson,
         });
-    } catch (error) {
-        context.log(`Error in CityBoundaryDB: ${error.message}`);
-        return createErrorResponse(500, "Internal server error", error.message);
+    } catch (error: any) {
+        const msg = error?.message ?? String(error);
+        context.log(`Error in CityBoundaryDB: ${msg}`);
+        context.log(`Stack: ${error?.stack}`);
+        return createErrorResponse(500, "Internal server error", msg);
     }
 }
 
