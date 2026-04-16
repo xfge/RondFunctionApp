@@ -41,7 +41,7 @@ export async function CityBoundaryDB(
 
         return createSuccessResponse({
             source: "db",
-            osm_id: result.osm_id,
+            osm_id: Number(result.osm_id),
             name: result.name,
             admin_level: result.admin_level,
             geojson: result.geojson,
