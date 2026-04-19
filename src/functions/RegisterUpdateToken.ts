@@ -42,7 +42,24 @@ export async function RegisterUpdateToken(
         const delaySeconds = dismissalDate - now;
 
         if (delaySeconds <= 0) {
-            return createErrorResponse(400, 'dismissal_date must be in the future');
+            // Dismissal date already passed — send end push immediately instead of scheduling.
+            context.log(`RegisterUpdateToken [${requestId}] dismissal_date already passed (${delaySeconds}s ago) — sending end push immediately`);
+            const instanceId = await client.startNew('ScheduleEndPushOrchestrator', {
+                input: {
+                    updateToken,
+                    topic,
+                    contentState,
+                    environment,
+                    dismissalDate: now,
+                },
+            });
+
+            return createSuccessResponse({
+                update_token: updateToken,
+                dismissal_date: dismissalDate,
+                delay_seconds: 0,
+                instance_id: instanceId,
+            });
         }
 
         const instanceId = await client.startNew('ScheduleEndPushOrchestrator', {
