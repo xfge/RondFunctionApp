@@ -14,6 +14,7 @@ const CITY_CATEGORIES = ["administrative.county_level", "administrative.city_lev
  */
 const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number> = {
     TW: 4, // 臺北市, 高雄市, etc. are admin_level=4
+    JP: 4, // 神奈川県, 東京都, etc. are admin_level=4
 };
 
 /**
