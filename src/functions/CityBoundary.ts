@@ -35,6 +35,11 @@ export async function CityBoundary(
             return createErrorResponse(400, "lng must be a number between -180 and 180");
         }
 
+        const noData = (!countryCode && (city === "无数据" || city === "No Data"));
+        if (noData) {
+            return createErrorResponse(400, "No valid city data provided");
+        }
+
         const route = resolveRoute(countryCode, deviceRegion);
         let osmId = route.osmId;
         let amapName = route.amapName;
