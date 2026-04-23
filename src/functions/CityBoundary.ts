@@ -46,7 +46,7 @@ export async function CityBoundary(
                 return createErrorResponse(404, "No city boundary found for the given coordinates and city name");
             }
             osmId = match.osmId;
-            context.log(`Geoapify resolved: ${city} → R${osmId} (${match.matchedBy})`);
+            context.log(`Geoapify resolved: ${city} → R${osmId} "${match.name}" (${match.matchedBy})`);
 
             if (route.source === "amap") {
                 amapName = match.nameInternational["zh"];
