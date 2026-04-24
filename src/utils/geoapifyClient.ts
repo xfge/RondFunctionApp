@@ -139,25 +139,32 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     const rawOsmId = props.datasource?.raw?.osm_id;
     if (rawOsmId == null) return null;
 
-    const osmId = Math.abs(rawOsmId);
-    const remap = OSM_ID_REMAP[osmId];
-    if (remap) {
-        return {
-            osmId: remap.osmId,
-            name: remap.label,
-            nameInternational: props.name_international ?? {},
-            categories: props.categories ?? [],
-            matchedBy: "hardcoded",
-            adminLevel: String(props.datasource?.raw?.admin_level ?? "?"),
-        };
-    }
-
-    return {
-        osmId,
+    const result: GeoapifyMatchResult = {
+        osmId: Math.abs(rawOsmId),
         name: props.name ?? "?",
         nameInternational: props.name_international ?? {},
         categories: props.categories ?? [],
         matchedBy,
         adminLevel: String(props.datasource?.raw?.admin_level ?? "?"),
+    };
+
+    return applyOsmIdRemap(result);
+}
+
+/**
+ * Apply any configured post-Geoapify OSM ID remap.
+ *
+ * If the result's OSM relation ID has an entry in {@link OSM_ID_REMAP}, return
+ * a new result with the remapped `osmId` and `name`, and `matchedBy: "hardcoded"`
+ * so the override is visible in logs. Otherwise return the result unchanged.
+ */
+function applyOsmIdRemap(result: GeoapifyMatchResult): GeoapifyMatchResult {
+    const remap = OSM_ID_REMAP[result.osmId];
+    if (!remap) return result;
+    return {
+        ...result,
+        osmId: remap.osmId,
+        name: remap.label,
+        matchedBy: "hardcoded",
     };
 }
