@@ -20,23 +20,28 @@ export async function CityBoundary(
 
     try {
         const body = await parseRequestBody(request) as CityBoundaryRequest;
+        context.log(`CityBoundary request body: ${JSON.stringify(body)}`);
 
         const validation = validateRequestBody(body, ['lat', 'lng', 'city']);
         if (!validation.isValid) {
+            context.log(`CityBoundary 400: ${validation.error} (body=${JSON.stringify(body)})`);
             return createErrorResponse(400, validation.error!);
         }
 
         const { lat, lng, city, country_code: countryCode, device_region: deviceRegion, area } = body;
 
         if (typeof lat !== 'number' || lat < -90 || lat > 90) {
+            context.log(`CityBoundary 400: invalid lat=${JSON.stringify(lat)} (type=${typeof lat})`);
             return createErrorResponse(400, "lat must be a number between -90 and 90");
         }
         if (typeof lng !== 'number' || lng < -180 || lng > 180) {
+            context.log(`CityBoundary 400: invalid lng=${JSON.stringify(lng)} (type=${typeof lng})`);
             return createErrorResponse(400, "lng must be a number between -180 and 180");
         }
 
         const noData = (!countryCode && (city === "无数据" || city === "No Data"));
         if (noData) {
+            context.log(`CityBoundary 400: no valid city data (city=${JSON.stringify(city)}, country_code=${JSON.stringify(countryCode)})`);
             return createErrorResponse(400, "No valid city data provided");
         }
 
