@@ -78,7 +78,7 @@ export async function fetchGeoapifyMatch(
 function extractMatch(features: GeoapifyFeature[], city: string, area?: string, countryCode?: string): GeoapifyMatchResult | null {
     const cityLower = city.toLowerCase();
 
-    /** Check if any of a feature's names start with the given target (case-insensitive prefix match). */
+    /** Check if any of a feature's names are a prefix of (or share a prefix with) the given target (case-insensitive). */
     const featureNamesMatch = (feature: GeoapifyFeature, target: string): boolean => {
         const props = feature.properties;
         const names: string[] = [];
@@ -86,7 +86,10 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         if (props.name_international) {
             names.push(...Object.values(props.name_international));
         }
-        return names.some((n) => n.toLowerCase().startsWith(target));
+        return names.some((n) => {
+            const lower = n.toLowerCase();
+            return lower.startsWith(target) || target.startsWith(lower);
+        });
     };
 
     // 1. Name match: city name against feature names (case-insensitive)
