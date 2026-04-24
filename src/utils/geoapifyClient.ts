@@ -63,7 +63,6 @@ export async function fetchGeoapifyMatch(
     log?.('Geoapify response:', inspect({
         features: features.map((f) => ({
             name: f.properties.name,
-            name_international: f.properties.name_international,
             categories: f.properties.categories,
             admin_level: f.properties.datasource?.raw?.admin_level,
             osm_id: f.properties.datasource?.raw?.osm_id,
