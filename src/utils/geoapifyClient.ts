@@ -41,8 +41,6 @@ export async function fetchGeoapifyMatch(
     url.searchParams.set("geometry", "point");
     url.searchParams.set("apiKey", apiKey);
 
-    log?.('Geoapify request:', { lat, lng, city, area, countryCode });
-
     const data = await fetchWithRetry(url.toString()) as GeoapifyResponse | null;
 
     const features = data?.features ?? [];
