@@ -45,7 +45,7 @@ export async function CityBoundary(
             return createErrorResponse(400, "No valid city data provided");
         }
 
-        const route = resolveRoute(countryCode, deviceRegion);
+        const route = resolveRoute(countryCode, deviceRegion, city);
         let osmId = route.osmId;
         let amapName = route.amapName;
 
