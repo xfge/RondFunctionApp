@@ -84,7 +84,9 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         const names: string[] = [];
         if (props.name) names.push(props.name);
         if (props.name_international) {
-            names.push(...Object.values(props.name_international));
+            for (const v of Object.values(props.name_international)) {
+                if (typeof v === "string") names.push(v);
+            }
         }
         return names.some((n) => n.toLowerCase() === target);
     };
