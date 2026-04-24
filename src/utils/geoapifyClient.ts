@@ -18,6 +18,21 @@ const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number> = {
 };
 
 /**
+ * Post-Geoapify OSM ID remaps.
+ *
+ * Geoapify matches still run as usual; if the resolved OSM relation ID appears
+ * here, it is replaced with the mapped ID. Use this when Geoapify consistently
+ * returns a boundary that is too broad/narrow for our use case and we want a
+ * different pre-existing OSM relation instead.
+ *
+ * Keys and values are absolute (unsigned) OSM relation IDs.
+ */
+const OSM_ID_REMAP: Record<number, { osmId: number; label: string }> = {
+    // 東京都 (Tokyo Metropolis prefecture) → 東京都区部 / 東京23区 (Tokyo 23 Special Wards)
+    1543125: { osmId: 19631009, label: "Tokyo 23 Wards" },
+};
+
+/**
  * Resolve coordinates + city name to an OSM relation ID and city metadata.
  * City-states (HK, MO, SG, MC) should be handled by the caller before calling this.
  * Returns null if no matching feature is found.
@@ -121,15 +136,35 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         : "admin_level";
 
     const props = match.properties;
-    const osmId = props.datasource?.raw?.osm_id;
-    if (osmId == null) return null;
+    const rawOsmId = props.datasource?.raw?.osm_id;
+    if (rawOsmId == null) return null;
 
-    return {
-        osmId: Math.abs(osmId),
+    const result: GeoapifyMatchResult = {
+        osmId: Math.abs(rawOsmId),
         name: props.name ?? "?",
         nameInternational: props.name_international ?? {},
         categories: props.categories ?? [],
         matchedBy,
         adminLevel: String(props.datasource?.raw?.admin_level ?? "?"),
+    };
+
+    return applyOsmIdRemap(result);
+}
+
+/**
+ * Apply any configured post-Geoapify OSM ID remap.
+ *
+ * If the result's OSM relation ID has an entry in {@link OSM_ID_REMAP}, return
+ * a new result with the remapped `osmId` and `name`, and `matchedBy: "hardcoded"`
+ * so the override is visible in logs. Otherwise return the result unchanged.
+ */
+function applyOsmIdRemap(result: GeoapifyMatchResult): GeoapifyMatchResult {
+    const remap = OSM_ID_REMAP[result.osmId];
+    if (!remap) return result;
+    return {
+        ...result,
+        osmId: remap.osmId,
+        name: remap.label,
+        matchedBy: "hardcoded",
     };
 }
