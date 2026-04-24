@@ -86,7 +86,10 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         if (props.name_international) {
             names.push(...Object.values(props.name_international));
         }
+        // Filter out empty/very short names to prevent spurious prefix matches
+        // (e.g. an empty "" would make target.startsWith(lower) true for any city).
         return names.some((n) => {
+            if (!n || n.length < 2) return false;
             const lower = n.toLowerCase();
             return lower.startsWith(target) || target.startsWith(lower);
         });
