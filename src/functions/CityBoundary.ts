@@ -39,7 +39,7 @@ export async function CityBoundary(
             return createErrorResponse(400, "lng must be a number between -180 and 180");
         }
 
-        const noData = (!countryCode && (city === "无数据" || city === "No Data"));
+        const noData = (city === "无数据" || city === "No Data");
         if (noData) {
             context.log(`CityBoundary 400: No valid city data provided`);
             return createErrorResponse(400, "No valid city data provided");
@@ -58,7 +58,7 @@ export async function CityBoundary(
                 return createErrorResponse(404, "No city boundary found for the given coordinates and city name");
             }
             osmId = match.osmId;
-            context.log(`Geoapify resolved: ${city} → R${osmId} "${match.name}" (${match.matchedBy})`);
+            context.log(`Geoapify resolved: "${city}" → R${osmId} "${match.name}" (${match.matchedBy})`);
 
             if (route.source === "amap") {
                 amapName = match.nameInternational["zh"];
