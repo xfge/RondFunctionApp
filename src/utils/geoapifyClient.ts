@@ -18,6 +18,21 @@ const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number> = {
 };
 
 /**
+ * Post-Geoapify OSM ID remaps.
+ *
+ * Geoapify matches still run as usual; if the resolved OSM relation ID appears
+ * here, it is replaced with the mapped ID. Use this when Geoapify consistently
+ * returns a boundary that is too broad/narrow for our use case and we want a
+ * different pre-existing OSM relation instead.
+ *
+ * Keys and values are absolute (unsigned) OSM relation IDs.
+ */
+const OSM_ID_REMAP: Record<number, { osmId: number; label: string }> = {
+    // 東京都 (Tokyo Metropolis prefecture) → 東京都区部 / 東京23区 (Tokyo 23 Special Wards)
+    1543125: { osmId: 19631009, label: "Tokyo 23 Wards" },
+};
+
+/**
  * Resolve coordinates + city name to an OSM relation ID and city metadata.
  * City-states (HK, MO, SG, MC) should be handled by the caller before calling this.
  * Returns null if no matching feature is found.
@@ -121,11 +136,24 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         : "admin_level";
 
     const props = match.properties;
-    const osmId = props.datasource?.raw?.osm_id;
-    if (osmId == null) return null;
+    const rawOsmId = props.datasource?.raw?.osm_id;
+    if (rawOsmId == null) return null;
+
+    const osmId = Math.abs(rawOsmId);
+    const remap = OSM_ID_REMAP[osmId];
+    if (remap) {
+        return {
+            osmId: remap.osmId,
+            name: remap.label,
+            nameInternational: props.name_international ?? {},
+            categories: props.categories ?? [],
+            matchedBy: "hardcoded",
+            adminLevel: String(props.datasource?.raw?.admin_level ?? "?"),
+        };
+    }
 
     return {
-        osmId: Math.abs(osmId),
+        osmId,
         name: props.name ?? "?",
         nameInternational: props.name_international ?? {},
         categories: props.categories ?? [],
