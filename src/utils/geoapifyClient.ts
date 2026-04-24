@@ -41,11 +41,12 @@ export async function fetchGeoapifyMatch(
     url.searchParams.set("geometry", "point");
     url.searchParams.set("apiKey", apiKey);
 
+    log?.('Geoapify request:', { lat, lng, city, area, countryCode });
+
     const data = await fetchWithRetry(url.toString()) as GeoapifyResponse | null;
 
     const features = data?.features ?? [];
     log?.('Geoapify response:', {
-        lat, lng, city, area, countryCode,
         features: features.map((f) => ({
             name: f.properties.name,
             name_international: f.properties.name_international,
