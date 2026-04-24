@@ -43,14 +43,18 @@ export async function fetchGeoapifyMatch(
 
     const data = await fetchWithRetry(url.toString()) as GeoapifyResponse | null;
 
-    const featureCount = data?.features?.length ?? 0;
-    const featureDetails = (data?.features ?? []).map(f => {
-        const p = f.properties;
-        return `"${p.name}" geo=${f.geometry?.type ?? "?"} categories=[${p.categories?.join(", ") ?? ""}] osm_id=${p.datasource?.raw?.osm_id ?? "?"} admin_level=${p.datasource?.raw?.admin_level ?? "?"}`;
+    const features = data?.features ?? [];
+    log?.('Geoapify response:', {
+        features: features.map((f) => ({
+            name: f.properties.name,
+            name_international: f.properties.name_international,
+            categories: f.properties.categories,
+            admin_level: f.properties.datasource?.raw?.admin_level,
+            osm_id: f.properties.datasource?.raw?.osm_id,
+        })),
     });
-    log?.(`Geoapify: lat=${lat} lng=${lng} city="${city}" area="${area ?? "none"}" countryCode=${countryCode ?? "none"} | ${featureCount} features: [${featureDetails.join(" | ")}]`);
 
-    if (!featureCount) return null;
+    if (!features.length) return null;
 
     return extractMatch(data!.features, city, area, countryCode);
 }
