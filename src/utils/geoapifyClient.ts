@@ -108,9 +108,12 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         })
         : undefined;
 
-    // 3. Area match: area name against feature names (case- and diacritic-insensitive)
+    // 3. Area match: area name against feature names (case- and diacritic-insensitive).
+    //    Only accept admin_level ≥ 5 to avoid overly broad matches (e.g. "England").
     const areaMatch = !nameMatch && !countryMatch && area
-        ? features.find((f) => featureNamesMatch(f, normalize(area)))
+        ? features.find((f) =>
+            (f.properties.datasource?.raw?.admin_level ?? 0) >= 5 &&
+            featureNamesMatch(f, normalize(area)))
         : undefined;
 
     // 4. Category match
