@@ -20,28 +20,28 @@ export async function CityBoundary(
 
     try {
         const body = await parseRequestBody(request) as CityBoundaryRequest;
+        context.log(`CityBoundary request body: ${JSON.stringify(body)}`);
 
         const validation = validateRequestBody(body, ['lat', 'lng', 'city']);
         if (!validation.isValid) {
-            const bodyKeys = body && typeof body === 'object' ? Object.keys(body) : [];
-            context.log(`CityBoundary 400: ${validation.error} (body keys=[${bodyKeys.join(', ')}])`);
+            context.log(`CityBoundary 400: ${validation.error}`);
             return createErrorResponse(400, validation.error!);
         }
 
         const { lat, lng, city, country_code: countryCode, device_region: deviceRegion, area } = body;
 
         if (typeof lat !== 'number' || lat < -90 || lat > 90) {
-            context.log(`CityBoundary 400: invalid lat=${JSON.stringify(lat)} (type=${typeof lat})`);
+            context.log(`CityBoundary 400: lat must be a number between -90 and 90`);
             return createErrorResponse(400, "lat must be a number between -90 and 90");
         }
         if (typeof lng !== 'number' || lng < -180 || lng > 180) {
-            context.log(`CityBoundary 400: invalid lng=${JSON.stringify(lng)} (type=${typeof lng})`);
+            context.log(`CityBoundary 400: lng must be a number between -180 and 180`);
             return createErrorResponse(400, "lng must be a number between -180 and 180");
         }
 
         const noData = (!countryCode && (city === "无数据" || city === "No Data"));
         if (noData) {
-            context.log(`CityBoundary 400: no valid city data (city=${JSON.stringify(city)}, country_code=${JSON.stringify(countryCode)})`);
+            context.log(`CityBoundary 400: No valid city data provided`);
             return createErrorResponse(400, "No valid city data provided");
         }
 
@@ -53,6 +53,7 @@ export async function CityBoundary(
         if (osmId == null) {
             const match = await fetchGeoapifyMatch(lat, lng, city, countryCode, area, (...args) => context.log(...args));
             if (!match) {
+                context.log(`CityBoundary 404: No city boundary found for the given coordinates and city name`);
                 return createErrorResponse(404, "No city boundary found for the given coordinates and city name");
             }
             osmId = match.osmId;
@@ -61,6 +62,7 @@ export async function CityBoundary(
             if (route.source === "amap") {
                 amapName = match.nameInternational["zh"];
                 if (!amapName) {
+                    context.log(`CityBoundary 404: No Chinese name available from Geoapify for R${osmId}`);
                     return createErrorResponse(404, `No Chinese name available from Geoapify for R${osmId}`);
                 }
             }
@@ -71,6 +73,7 @@ export async function CityBoundary(
         // Fetch boundary from the resolved source
         if (route.source === "amap") {
             if (!amapName) {
+                context.log(`CityBoundary 404: No Chinese name available for R${osmId}`);
                 return createErrorResponse(404, `No Chinese name available for R${osmId}`);
             }
             return await handleAmapBoundary(osmId, amapName, context);
@@ -94,6 +97,7 @@ async function handleOSMBoundary(
 
     const geojson = await fetchOSMBoundary(osmId);
     if (!geojson) {
+        context.log(`CityBoundary 404: Boundary geometry not available for OSM relation R${osmId}`);
         return createErrorResponse(404, `Boundary geometry not available for OSM relation R${osmId}`);
     }
 
@@ -115,6 +119,7 @@ async function handleAmapBoundary(
 
     const geojson = await fetchAmapBoundary(chineseName);
     if (!geojson) {
+        context.log(`CityBoundary 404: AMap boundary not available for "${chineseName}" (R${osmId})`);
         return createErrorResponse(404, `AMap boundary not available for "${chineseName}" (R${osmId})`);
     }
 
