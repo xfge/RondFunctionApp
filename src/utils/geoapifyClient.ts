@@ -1,3 +1,4 @@
+import { inspect } from "util";
 import { GeoapifyResponse, GeoapifyFeature, GeoapifyMatchResult } from "./boundaryTypes";
 import { fetchWithRetry } from "./httpUtils";
 
@@ -59,7 +60,7 @@ export async function fetchGeoapifyMatch(
     const data = await fetchWithRetry(url.toString()) as GeoapifyResponse | null;
 
     const features = data?.features ?? [];
-    log?.('Geoapify response:', {
+    log?.('Geoapify response:', inspect({
         features: features.map((f) => ({
             name: f.properties.name,
             name_international: f.properties.name_international,
@@ -67,7 +68,7 @@ export async function fetchGeoapifyMatch(
             admin_level: f.properties.datasource?.raw?.admin_level,
             osm_id: f.properties.datasource?.raw?.osm_id,
         })),
-    });
+    }, { depth: null, maxArrayLength: null, breakLength: Infinity }));
 
     if (!features.length) return null;
 
