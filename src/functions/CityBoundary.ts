@@ -20,7 +20,7 @@ export async function CityBoundary(
 
     try {
         const body = await parseRequestBody(request) as CityBoundaryRequest;
-        context.log(`CityBoundary request body: ${JSON.stringify(body)}`);
+        context.log('CityBoundary request body:', body);
 
         const validation = validateRequestBody(body, ['lat', 'lng', 'city']);
         if (!validation.isValid) {
