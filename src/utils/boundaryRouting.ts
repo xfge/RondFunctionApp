@@ -23,9 +23,13 @@ export interface RoutingResult {
  *   - HK/MO + device_region other → OSM
  *   - SG/MC → always OSM
  * - country_code CN → AMap (Geoapify needed for osm_id + Chinese name)
+ *   - Exception: if the city name matches a city-state's Chinese name
+ *     (e.g. "香港特别行政区" / "澳门特别行政区"), the client has mislabeled
+ *     HK/MO as CN. AMap cannot return these boundaries as a mainland query,
+ *     so we fall back to OSM with the hardcoded city-state osmId.
  * - Everything else → OSM (Geoapify needed for osm_id)
  */
-export function resolveRoute(countryCode?: string, deviceRegion?: string): RoutingResult {
+export function resolveRoute(countryCode?: string, deviceRegion?: string, city?: string): RoutingResult {
     const code = countryCode?.toUpperCase();
     const isCNRegion = deviceRegion?.toUpperCase() === "CN";
 
@@ -36,6 +40,16 @@ export function resolveRoute(countryCode?: string, deviceRegion?: string): Routi
             return { source: "amap", osmId: cityState.osmId, amapName: cityState.amapName };
         }
         return { source: "osm", osmId: cityState.osmId };
+    }
+
+    // Mislabeled city-state: country_code=CN but the city name is the Chinese
+    // name of a city-state (HK/MO). Route to OSM using the hardcoded osmId.
+    if (code === "CN" && city) {
+        for (const cs of Object.values(CITY_STATES)) {
+            if (cs.amapName && cs.amapName === city) {
+                return { source: "osm", osmId: cs.osmId };
+            }
+        }
     }
 
     // Regular cities
