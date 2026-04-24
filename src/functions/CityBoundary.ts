@@ -20,11 +20,11 @@ export async function CityBoundary(
 
     try {
         const body = await parseRequestBody(request) as CityBoundaryRequest;
-        context.log(`CityBoundary request body: ${JSON.stringify(body)}`);
 
         const validation = validateRequestBody(body, ['lat', 'lng', 'city']);
         if (!validation.isValid) {
-            context.log(`CityBoundary 400: ${validation.error} (body=${JSON.stringify(body)})`);
+            const bodyKeys = body && typeof body === 'object' ? Object.keys(body) : [];
+            context.log(`CityBoundary 400: ${validation.error} (body keys=[${bodyKeys.join(', ')}])`);
             return createErrorResponse(400, validation.error!);
         }
 
