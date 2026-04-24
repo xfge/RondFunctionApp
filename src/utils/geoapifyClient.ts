@@ -48,7 +48,7 @@ export async function fetchGeoapifyMatch(
         const p = f.properties;
         return `"${p.name}" geo=${f.geometry?.type ?? "?"} categories=[${p.categories?.join(", ") ?? ""}] osm_id=${p.datasource?.raw?.osm_id ?? "?"} admin_level=${p.datasource?.raw?.admin_level ?? "?"}`;
     });
-    log?.(`Geoapify: lat=${lat} lng=${lng} city="${city}" countryCode=${countryCode ?? "none"} | ${featureCount} features: [${featureDetails.join(" | ")}]`);
+    log?.(`Geoapify: lat=${lat} lng=${lng} city="${city}" area="${area ?? "none"}" countryCode=${countryCode ?? "none"} | ${featureCount} features: [${featureDetails.join(" | ")}]`);
 
     if (!featureCount) return null;
 
@@ -73,18 +73,18 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     // 1. Name match: city name against feature names (case-insensitive)
     const nameMatch = features.find((f) => featureNamesMatch(f, cityLower));
 
-    // 2. Area match: area name against feature names (case-insensitive)
-    const areaMatch = !nameMatch && area
-        ? features.find((f) => featureNamesMatch(f, area.toLowerCase()))
-        : undefined;
-
-    // 3. Country-specific admin_level override (e.g. TW cities at admin_level=4)
+    // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4)
     const cityAdminLevel = countryCode ? COUNTRY_CITY_ADMIN_LEVEL[countryCode] : undefined;
-    const countryMatch = !nameMatch && !areaMatch && cityAdminLevel != null
+    const countryMatch = !nameMatch && cityAdminLevel != null
         ? features.find((f) => {
             const level = f.properties.datasource?.raw?.admin_level ?? 0;
             return level === cityAdminLevel && f.properties.datasource?.raw?.osm_id != null;
         })
+        : undefined;
+
+    // 3. Area match: area name against feature names (case-insensitive)
+    const areaMatch = !nameMatch && !countryMatch && area
+        ? features.find((f) => featureNamesMatch(f, area.toLowerCase()))
         : undefined;
 
     // 4. Category match
@@ -107,7 +107,7 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
               [0] ?? null
         : null;
 
-    const match = nameMatch ?? areaMatch ?? countryMatch ?? categoryMatch ?? fallbackMatch;
+    const match = nameMatch ?? countryMatch ?? areaMatch ?? categoryMatch ?? fallbackMatch;
     if (!match) return null;
 
     const matchedBy = nameMatch ? "name"
