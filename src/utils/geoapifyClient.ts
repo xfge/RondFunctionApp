@@ -43,11 +43,19 @@ export async function fetchGeoapifyMatch(
 
     const data = await fetchWithRetry(url.toString()) as GeoapifyResponse | null;
 
-    log?.('Geoapify response:', { lat, lng, city, area, countryCode, features: data?.features });
+    const features = data?.features ?? [];
+    log?.('Geoapify response:', {
+        lat, lng, city, area, countryCode,
+        features: features.map((f) => ({
+            name: f.properties.name,
+            name_international: f.properties.name_international,
+            categories: f.properties.categories,
+            admin_level: f.properties.datasource?.raw?.admin_level,
+            osm_id: f.properties.datasource?.raw?.osm_id,
+        })),
+    });
 
-    const featureCount = data?.features?.length ?? 0;
-
-    if (!featureCount) return null;
+    if (!features.length) return null;
 
     return extractMatch(data!.features, city, area, countryCode);
 }
