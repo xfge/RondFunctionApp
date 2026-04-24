@@ -74,11 +74,16 @@ export async function fetchGeoapifyMatch(
     return extractMatch(data!.features, city, area, countryCode);
 }
 
+/** Strip diacritics/accents for fuzzy name comparison (e.g. ö → o, é → e). */
+function normalize(s: string): string {
+    return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 /** Pick the matching feature by name, area, category, or admin_level and return its OSM relation ID. */
 function extractMatch(features: GeoapifyFeature[], city: string, area?: string, countryCode?: string): GeoapifyMatchResult | null {
-    const cityLower = city.toLowerCase();
+    const cityNorm = normalize(city);
 
-    /** Check if any of a feature's names match the given target (case-insensitive). */
+    /** Check if any of a feature's names match the given target (case- and diacritic-insensitive). */
     const featureNamesMatch = (feature: GeoapifyFeature, target: string): boolean => {
         const props = feature.properties;
         const names: string[] = [];
@@ -88,11 +93,11 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
                 if (typeof v === "string") names.push(v);
             }
         }
-        return names.some((n) => n.toLowerCase() === target);
+        return names.some((n) => normalize(n) === target);
     };
 
-    // 1. Name match: city name against feature names (case-insensitive)
-    const nameMatch = features.find((f) => featureNamesMatch(f, cityLower));
+    // 1. Name match: city name against feature names (case- and diacritic-insensitive)
+    const nameMatch = features.find((f) => featureNamesMatch(f, cityNorm));
 
     // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4)
     const cityAdminLevel = countryCode ? COUNTRY_CITY_ADMIN_LEVEL[countryCode] : undefined;
@@ -103,9 +108,9 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         })
         : undefined;
 
-    // 3. Area match: area name against feature names (case-insensitive)
+    // 3. Area match: area name against feature names (case- and diacritic-insensitive)
     const areaMatch = !nameMatch && !countryMatch && area
-        ? features.find((f) => featureNamesMatch(f, area.toLowerCase()))
+        ? features.find((f) => featureNamesMatch(f, normalize(area)))
         : undefined;
 
     // 4. Category match
