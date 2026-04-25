@@ -5,7 +5,7 @@ import { fetchWithRetry } from "./httpUtils";
 const GEOAPIFY_BOUNDARIES_URL = "https://api.geoapify.com/v1/boundaries/part-of";
 
 /** Geoapify category keys for city-level matching, in priority order. */
-const CITY_CATEGORIES = ["administrative.county_level", "administrative.city_level"];
+const CITY_CATEGORIES = ["administrative.district_level", "administrative.county_level", "administrative.city_level"];
 
 /**
  * Country-specific city admin_level overrides.
