@@ -7,9 +7,17 @@ const USER_AGENT = "Rond/1.0 (Server)";
 export async function fetchWithRetry(url: string, maxRetries = 3): Promise<any | null> {
     let delay = 1000;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        const response = await fetch(url, {
-            headers: { "User-Agent": USER_AGENT },
-        });
+        let response: Response;
+        try {
+            response = await fetch(url, {
+                headers: { "User-Agent": USER_AGENT },
+            });
+        } catch {
+            if (attempt >= maxRetries) return null;
+            await sleep(delay);
+            delay *= 2;
+            continue;
+        }
 
         if (response.status === 429 || response.status === 503) {
             if (attempt >= maxRetries) return null;
