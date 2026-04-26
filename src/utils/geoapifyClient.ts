@@ -14,6 +14,7 @@ const CITY_CATEGORIES = ["administrative.county_level", "administrative.city_lev
  * Map country code → the OSM admin_level that represents a city.
  */
 const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number> = {
+    CN: 5, // 乌鲁木齐市, 文山壮族苗族自治州, etc. are admin_level=5
     TW: 4, // 臺北市, 高雄市, etc. are admin_level=4
     JP: 4, // 神奈川県, 東京都, etc. are admin_level=4
 };
