@@ -43,6 +43,17 @@ export interface GeoapifyMatchResult {
     adminLevel: string;
 }
 
+// --- Overpass (provider-agnostic match result) ---
+
+export interface BoundaryMatchResult {
+    osmId: number;
+    name: string;
+    nameInternational: Record<string, string>;
+    categories: string[];
+    matchedBy: 'name' | 'contains' | 'category' | 'admin_level' | 'hardcoded';
+    adminLevel: string;
+}
+
 // --- AMap ---
 
 export interface AmapDistrictResponse {

@@ -4,13 +4,14 @@ const USER_AGENT = "Rond/1.0 (Server)";
  * Fetch with exponential backoff on rate limit (429/503). Max 3 retries.
  * Returns parsed JSON object or null on failure.
  */
-export async function fetchWithRetry(url: string, maxRetries = 3): Promise<any | null> {
+export async function fetchWithRetry(url: string, init?: RequestInit, maxRetries = 3): Promise<any | null> {
     let delay = 1000;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         let response: Response;
         try {
             response = await fetch(url, {
-                headers: { "User-Agent": USER_AGENT },
+                ...init,
+                headers: { "User-Agent": USER_AGENT, ...init?.headers },
             });
         } catch {
             if (attempt >= maxRetries) return null;
