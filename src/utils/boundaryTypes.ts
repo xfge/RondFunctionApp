@@ -39,7 +39,7 @@ export interface GeoapifyMatchResult {
     name: string;
     nameInternational: Record<string, string>;
     categories: string[];
-    matchedBy: 'name' | 'prefix' | 'category' | 'admin_level' | 'hardcoded';
+    matchedBy: 'name' | 'contains' | 'category' | 'admin_level' | 'hardcoded';
     adminLevel: string;
 }
 
