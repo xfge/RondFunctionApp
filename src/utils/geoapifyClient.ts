@@ -100,24 +100,24 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     const featureNamesMatch = (feature: GeoapifyFeature, target: string): boolean =>
         featureNames(feature).some((n) => normalize(n) === target);
 
-    /** Check if the target is a prefix of any feature name (or vice versa). */
-    const featureNamesPrefix = (feature: GeoapifyFeature, target: string): boolean =>
+    /** Check if the target is contained in any feature name (or vice versa). */
+    const featureNamesContain = (feature: GeoapifyFeature, target: string): boolean =>
         featureNames(feature).some((n) => {
             const norm = normalize(n);
-            return norm.startsWith(target) || target.startsWith(norm);
+            return norm.includes(target) || target.includes(norm);
         });
 
     // 1a. Exact name match: city name against feature names (case- and diacritic-insensitive)
     const nameMatch = features.find((f) => featureNamesMatch(f, cityNorm));
 
-    // 1b. Prefix name match: e.g. "乌鲁木齐" matches "乌鲁木齐市"
-    const prefixMatch = !nameMatch
-        ? features.find((f) => featureNamesPrefix(f, cityNorm))
+    // 1b. Contains name match: e.g. "乌鲁木齐" in "乌鲁木齐市", "El Torno" in "Municipio El Torno"
+    const containsMatch = !nameMatch
+        ? features.find((f) => featureNamesContain(f, cityNorm))
         : undefined;
 
     // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4)
     const cityAdminLevel = countryCode ? COUNTRY_CITY_ADMIN_LEVEL[countryCode] : undefined;
-    const anyNameMatch = nameMatch ?? prefixMatch;
+    const anyNameMatch = nameMatch ?? containsMatch;
 
     const countryMatch = !anyNameMatch && cityAdminLevel != null
         ? features.find((f) => {
@@ -158,7 +158,7 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     if (!match) return null;
 
     const matchedBy = nameMatch ? "name"
-        : prefixMatch ? "prefix"
+        : containsMatch ? "contains"
         : areaMatch ? "name"
         : countryMatch ? "admin_level"
         : categoryMatch ? "category"
