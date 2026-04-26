@@ -5,7 +5,7 @@ import { fetchWithRetry } from "./httpUtils";
 const GEOAPIFY_BOUNDARIES_URL = "https://api.geoapify.com/v1/boundaries/part-of";
 
 /** Geoapify category keys for city-level matching, in priority order. */
-const CITY_CATEGORIES = ["administrative.district_level", "administrative.county_level", "administrative.city_level"];
+const CITY_CATEGORIES = ["administrative.county_level", "administrative.city_level"];
 
 /**
  * Country-specific city admin_level overrides.
@@ -83,8 +83,8 @@ function normalize(s: string): string {
 function extractMatch(features: GeoapifyFeature[], city: string, area?: string, countryCode?: string): GeoapifyMatchResult | null {
     const cityNorm = normalize(city);
 
-    /** Check if any of a feature's names match the given target (case- and diacritic-insensitive). */
-    const featureNamesMatch = (feature: GeoapifyFeature, target: string): boolean => {
+    /** Collect all names (primary + international) for a feature. */
+    const featureNames = (feature: GeoapifyFeature): string[] => {
         const props = feature.properties;
         const names: string[] = [];
         if (props.name) names.push(props.name);
@@ -93,15 +93,33 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
                 if (typeof v === "string") names.push(v);
             }
         }
-        return names.some((n) => normalize(n) === target);
+        return names;
     };
 
-    // 1. Name match: city name against feature names (case- and diacritic-insensitive)
+    /** Check if any of a feature's names match the target exactly. */
+    const featureNamesMatch = (feature: GeoapifyFeature, target: string): boolean =>
+        featureNames(feature).some((n) => normalize(n) === target);
+
+    /** Check if the target is a prefix of any feature name (or vice versa). */
+    const featureNamesPrefix = (feature: GeoapifyFeature, target: string): boolean =>
+        featureNames(feature).some((n) => {
+            const norm = normalize(n);
+            return norm.startsWith(target) || target.startsWith(norm);
+        });
+
+    // 1a. Exact name match: city name against feature names (case- and diacritic-insensitive)
     const nameMatch = features.find((f) => featureNamesMatch(f, cityNorm));
+
+    // 1b. Prefix name match: e.g. "乌鲁木齐" matches "乌鲁木齐市"
+    const prefixMatch = !nameMatch
+        ? features.find((f) => featureNamesPrefix(f, cityNorm))
+        : undefined;
 
     // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4)
     const cityAdminLevel = countryCode ? COUNTRY_CITY_ADMIN_LEVEL[countryCode] : undefined;
-    const countryMatch = !nameMatch && cityAdminLevel != null
+    const anyNameMatch = nameMatch ?? prefixMatch;
+
+    const countryMatch = !anyNameMatch && cityAdminLevel != null
         ? features.find((f) => {
             const level = f.properties.datasource?.raw?.admin_level ?? 0;
             return level === cityAdminLevel && f.properties.datasource?.raw?.osm_id != null;
@@ -110,21 +128,21 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
 
     // 3. Area match: area name against feature names (case- and diacritic-insensitive).
     //    Only accept admin_level ≥ 5 to avoid overly broad matches (e.g. "England").
-    const areaMatch = !nameMatch && !countryMatch && area
+    const areaMatch = !anyNameMatch && !countryMatch && area
         ? features.find((f) =>
             (f.properties.datasource?.raw?.admin_level ?? 0) >= 5 &&
             featureNamesMatch(f, normalize(area)))
         : undefined;
 
     // 4. Category match
-    const categoryMatch = !nameMatch && !areaMatch && !countryMatch ? features.find((feature) => {
+    const categoryMatch = !anyNameMatch && !areaMatch && !countryMatch ? features.find((feature) => {
         const cats = feature.properties.categories;
         if (!cats) return false;
         return CITY_CATEGORIES.some((c) => cats.includes(c));
     }) : undefined;
 
     // 5. Fallback: most specific boundary (highest admin_level ≤ 8, skipping sub-city wards/neighborhoods)
-    const fallbackMatch = !nameMatch && !areaMatch && !countryMatch && !categoryMatch
+    const fallbackMatch = !anyNameMatch && !areaMatch && !countryMatch && !categoryMatch
         ? [...features]
               .filter((f) => {
                   const level = f.properties.datasource?.raw?.admin_level ?? 0;
@@ -136,10 +154,11 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
               [0] ?? null
         : null;
 
-    const match = nameMatch ?? countryMatch ?? areaMatch ?? categoryMatch ?? fallbackMatch;
+    const match = anyNameMatch ?? countryMatch ?? areaMatch ?? categoryMatch ?? fallbackMatch;
     if (!match) return null;
 
     const matchedBy = nameMatch ? "name"
+        : prefixMatch ? "prefix"
         : areaMatch ? "name"
         : countryMatch ? "admin_level"
         : categoryMatch ? "category"

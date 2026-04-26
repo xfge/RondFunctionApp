@@ -121,9 +121,11 @@ async function handleAmapBoundary(
     }
 
     let geojson = await fetchAmapBoundary(chineseName);
+    let usedName = chineseName;
     if (!geojson && fallbackName) {
         context.log(`AMap miss for "${chineseName}", retrying with fallback "${fallbackName}"`);
         geojson = await fetchAmapBoundary(fallbackName);
+        usedName = fallbackName;
     }
     if (!geojson) {
         context.log(`CityBoundary 404: AMap boundary not available for "${chineseName}"${fallbackName ? ` / "${fallbackName}"` : ""} (R${osmId})`);
@@ -131,7 +133,7 @@ async function handleAmapBoundary(
     }
 
     await setAmapGeoJSON(osmId, geojson);
-    context.log(`Fetched and cached: boundary-amap/R${osmId}.geojson (name="${chineseName}"${fallbackName ? ` fallback="${fallbackName}"` : ""})`);
+    context.log(`Fetched and cached: boundary-amap/R${osmId}.geojson (searched="${usedName}")`);
     return createSuccessResponse({ source: "amap", osm_id: osmId, cached: false, geojson });
 }
 
