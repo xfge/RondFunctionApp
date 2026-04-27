@@ -113,11 +113,17 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
 
     // 1b. Contains name match: e.g. "乌鲁木齐" in "乌鲁木齐市", "El Torno" in "Municipio El Torno"
     //     Only consider admin_level ≤ 8 to skip neighbourhoods/suburbs.
+    //     Sort by admin_level ascending (broad → specific) to prefer broader boundaries.
     const containsMatch = !nameMatch
-        ? features.find((f) => {
-            const level = f.properties.datasource?.raw?.admin_level ?? 0;
-            return level > 0 && level <= 8 && featureNamesContain(f, cityNorm);
-        })
+        ? [...features]
+            .filter((f) => {
+                const level = f.properties.datasource?.raw?.admin_level ?? 0;
+                return level > 2 && level <= 8;
+            })
+            .sort((a, b) =>
+                (a.properties.datasource?.raw?.admin_level ?? 0) -
+                (b.properties.datasource?.raw?.admin_level ?? 0))
+            .find((f) => featureNamesContain(f, cityNorm))
         : undefined;
 
     // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4)
