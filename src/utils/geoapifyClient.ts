@@ -148,7 +148,7 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         ? [...features]
               .filter((f) => {
                   const level = f.properties.datasource?.raw?.admin_level ?? 0;
-                  return level >= 5 && level <= 8;
+                  return level > 2 && level <= 8;
               })
               .sort((a, b) =>
                   (a.properties.datasource?.raw?.admin_level ?? 0) -
