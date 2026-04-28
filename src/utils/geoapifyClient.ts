@@ -181,7 +181,7 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
 
     const matchedBy = nameMatch ? "name"
         : containsMatch ? "contains"
-        : areaMatch ? "contains"
+        : areaMatch ? "area_contains"
         : countryMatch ? "admin_level"
         : categoryMatch ? "category"
         : "admin_level";
