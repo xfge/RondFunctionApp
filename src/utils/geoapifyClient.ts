@@ -23,15 +23,29 @@ const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number> = {
  * Post-Geoapify OSM ID remaps.
  *
  * Geoapify matches still run as usual; if the resolved OSM relation ID appears
- * here, it is replaced with the mapped ID. Use this when Geoapify consistently
- * returns a boundary that is too broad/narrow for our use case and we want a
- * different pre-existing OSM relation instead.
+ * here, the result is rewritten according to the entry. Use this when Geoapify
+ * consistently returns a boundary that is too broad/narrow for our use case
+ * and we want a different pre-existing OSM relation, or when the resolved
+ * entity has no usable boundary in AMap and we want to substitute another
+ * Chinese name for the AMap lookup.
  *
- * Keys and values are absolute (unsigned) OSM relation IDs.
+ * Entry fields:
+ * - `osmId` (optional): replacement absolute OSM relation ID. If omitted, the
+ *   original OSM ID is kept (useful when only overriding the AMap name).
+ * - `label`: human-readable name; replaces `result.name` and is shown in logs.
+ * - `amapName` (optional): overrides `nameInternational.zh` so the AMap
+ *   district lookup uses this Chinese name instead.
+ *
+ * Keys are absolute (unsigned) OSM relation IDs.
  */
-const OSM_ID_REMAP: Record<number, { osmId: number; label: string }> = {
+const OSM_ID_REMAP: Record<number, { osmId?: number; label: string; amapName?: string }> = {
     // 東京都 (Tokyo Metropolis prefecture) → 東京都区部 / 東京23区 (Tokyo 23 Special Wards)
     1543125: { osmId: 19631009, label: "Tokyo 23 Wards" },
+    // 雄安新区 (Xiong'an New Area) is a state-level special economic zone with
+    // no boundary available in AMap's district API. The area was carved out of
+    // 保定市 (Baoding) in 2017 and is still administratively/historically
+    // associated with it, so route the AMap lookup to 保定 instead.
+    7157395: { label: "保定", amapName: "保定" },
 };
 
 /**
@@ -201,10 +215,14 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
 function applyOsmIdRemap(result: GeoapifyMatchResult): GeoapifyMatchResult {
     const remap = OSM_ID_REMAP[result.osmId];
     if (!remap) return result;
+    const nameInternational = remap.amapName
+        ? { ...result.nameInternational, zh: remap.amapName }
+        : result.nameInternational;
     return {
         ...result,
-        osmId: remap.osmId,
+        osmId: remap.osmId ?? result.osmId,
         name: remap.label,
+        nameInternational,
         matchedBy: "hardcoded",
     };
 }
