@@ -39,7 +39,7 @@ export interface GeoapifyMatchResult {
     name: string;
     nameInternational: Record<string, string>;
     categories: string[];
-    matchedBy: 'name' | 'contains' | 'category' | 'admin_level' | 'hardcoded';
+    matchedBy: 'name' | 'contains' | 'area_contains' | 'category' | 'admin_level' | 'hardcoded';
     adminLevel: string;
 }
 
@@ -50,7 +50,7 @@ export interface BoundaryMatchResult {
     name: string;
     nameInternational: Record<string, string>;
     categories: string[];
-    matchedBy: 'name' | 'contains' | 'category' | 'admin_level' | 'hardcoded';
+    matchedBy: 'name' | 'contains' | 'area_contains' | 'category' | 'admin_level' | 'hardcoded';
     adminLevel: string;
 }
 
