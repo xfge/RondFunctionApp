@@ -17,6 +17,7 @@ const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number> = {
     CN: 5, // 乌鲁木齐市, 文山壮族苗族自治州, etc. are admin_level=5
     TW: 4, // 臺北市, 高雄市, etc. are admin_level=4
     JP: 4, // 神奈川県, 東京都, etc. are admin_level=4
+    VN: 4, // Thành phố Hà Nội, TP. Hồ Chí Minh, etc. are admin_level=4
 };
 
 /**
@@ -138,11 +139,21 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         : undefined;
 
     // 3. Area match: area name against feature names (case- and diacritic-insensitive).
-    //    Only accept admin_level ≥ 5 to avoid overly broad matches (e.g. "England").
+    //    Use a contains-style match (mirrors the city containsMatch above) so that
+    //    short device-reported area strings like "Ha Noi" still match feature names
+    //    like "Thành phố Hà Nội". Restrict to admin_level 5–8 to avoid overly broad
+    //    matches (e.g. "England") and skip sub-city wards/neighborhoods, and sort
+    //    broad → specific to prefer broader boundaries.
     const areaMatch = !anyNameMatch && !countryMatch && area
-        ? features.find((f) =>
-            (f.properties.datasource?.raw?.admin_level ?? 0) >= 5 &&
-            featureNamesMatch(f, normalize(area)))
+        ? [...features]
+              .filter((f) => {
+                  const level = f.properties.datasource?.raw?.admin_level ?? 0;
+                  return level >= 5 && level <= 8;
+              })
+              .sort((a, b) =>
+                  (a.properties.datasource?.raw?.admin_level ?? 0) -
+                  (b.properties.datasource?.raw?.admin_level ?? 0))
+              .find((f) => featureNamesContain(f, normalize(area)))
         : undefined;
 
     // 4. Category match
@@ -170,7 +181,7 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
 
     const matchedBy = nameMatch ? "name"
         : containsMatch ? "contains"
-        : areaMatch ? "name"
+        : areaMatch ? "contains"
         : countryMatch ? "admin_level"
         : categoryMatch ? "category"
         : "admin_level";
