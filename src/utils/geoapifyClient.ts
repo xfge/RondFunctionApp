@@ -106,10 +106,6 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         return names;
     };
 
-    /** Check if a feature's primary name matches the target exactly. */
-    const primaryNameMatch = (feature: GeoapifyFeature, target: string): boolean =>
-        feature.properties.name ? normalize(feature.properties.name) === target : false;
-
     /** Check if any of a feature's names match the target exactly. */
     const featureNamesMatch = (feature: GeoapifyFeature, target: string): boolean =>
         featureNames(feature).some((n) => normalize(n) === target);
@@ -136,10 +132,8 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
                 (b.properties.datasource?.raw?.admin_level ?? 0))
             .find((f) => featureNamesContain(f, norm));
 
-    // 1a. Exact name match: prefer primary name, then fall back to international names
-    const nameMatch =
-        features.find((f) => primaryNameMatch(f, cityNorm)) ??
-        features.find((f) => featureNamesMatch(f, cityNorm));
+    // 1a. Exact name match: city name against feature names (case- and diacritic-insensitive)
+    const nameMatch = features.find((f) => featureNamesMatch(f, cityNorm));
 
     // 1b. Contains name match: e.g. "乌鲁木齐" in "乌鲁木齐市", "El Torno" in "Municipio El Torno"
     //     Only consider admin_level ≤ 8 to skip neighbourhoods/suburbs.
