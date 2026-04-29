@@ -15,6 +15,7 @@ const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number> = {
     CN: 5, // 乌鲁木齐市, 文山壮族苗族自治州, etc. are admin_level=5
     TW: 4, // 臺北市, 高雄市, etc. are admin_level=4
     JP: 4, // 神奈川県, 東京都, etc. are admin_level=4
+    AU: 6, // City of Melbourne, City of Sydney, etc. are LGAs at admin_level=6
 };
 
 /**
