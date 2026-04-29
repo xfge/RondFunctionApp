@@ -186,9 +186,9 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     const matchedBy = nameMatch ? "name"
         : containsMatch ? "contains"
         : areaMatch ? "area_contains"
-        : countryMatch ? "admin_level"
+        : countryMatch ? "country_admin_level"
         : categoryMatch ? "category"
-        : "admin_level";
+        : "fallback";
 
     const props = match.properties;
     const rawOsmId = props.datasource?.raw?.osm_id;
