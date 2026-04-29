@@ -171,6 +171,10 @@ function extractMatch(features: BoundaryFeature[], city: string, area?: string, 
         return names;
     };
 
+    /** Check if a feature's primary name matches the target exactly. */
+    const primaryNameMatch = (f: BoundaryFeature, target: string): boolean =>
+        f.name ? normalize(f.name) === target : false;
+
     /** Exact name match (case- and diacritic-insensitive). */
     const featureNamesMatch = (f: BoundaryFeature, target: string): boolean =>
         featureNames(f).some((n) => normalize(n) === target);
@@ -182,8 +186,10 @@ function extractMatch(features: BoundaryFeature[], city: string, area?: string, 
             return norm.includes(target) || target.includes(norm);
         });
 
-    // 1a. Exact name match
-    const nameMatch = features.find((f) => featureNamesMatch(f, cityNorm));
+    // 1a. Exact name match: prefer primary name, then fall back to international names
+    const nameMatch =
+        features.find((f) => primaryNameMatch(f, cityNorm)) ??
+        features.find((f) => featureNamesMatch(f, cityNorm));
 
     // 1b. Contains name match (e.g. "乌鲁木齐" in "乌鲁木齐市")
     const containsMatch = !nameMatch
