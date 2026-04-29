@@ -77,9 +77,16 @@ export async function fetchGeoapifyMatch(
     return extractMatch(data!.features, city, area, countryCode);
 }
 
-/** Strip diacritics/accents for fuzzy name comparison (e.g. ö → o, é → e). */
+/** Strip diacritics/accents and special letters for fuzzy name comparison. */
 function normalize(s: string): string {
-    return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return s.toLowerCase()
+        .replace(/\u0131/g, "i")    // Turkish ı
+        .replace(/\u0142/g, "l")    // Polish ł
+        .replace(/\u00f8/g, "o")    // Scandinavian ø
+        .replace(/\u0111/g, "d")    // Vietnamese/Croatian đ
+        .replace(/\u00e6/g, "ae")   // æ ligature
+        .replace(/\u00df/g, "ss")   // German ß
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 /** Pick the matching feature by name, area, category, or admin_level and return its OSM relation ID. */
