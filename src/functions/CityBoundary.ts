@@ -49,6 +49,7 @@ export async function CityBoundary(
         let osmId = route.osmId;
         let amapName = route.amapName;
         let amapFallbackName: string | undefined;
+        let parentOsmId: number | undefined;
 
         // If no pre-resolved osmId, call Geoapify
         if (osmId == null) {
@@ -58,6 +59,7 @@ export async function CityBoundary(
                 return createErrorResponse(404, "No city boundary found for the given coordinates and city name");
             }
             osmId = match.osmId;
+            parentOsmId = match.parentOsmId;
             context.log(`Geoapify resolved: "${city}" → R${osmId} "${match.name}" admin_level=${match.adminLevel} (${match.matchedBy})`);
 
             if (route.source === "amap") {
@@ -80,7 +82,7 @@ export async function CityBoundary(
             }
             return await handleAmapBoundary(osmId, amapName, amapFallbackName, context);
         }
-        return await handleOSMBoundary(osmId, context);
+        return await handleOSMBoundary(osmId, parentOsmId, context);
     } catch (error) {
         context.log(`Error in CityBoundary: ${error.message}`);
         return createErrorResponse(500, "Internal server error", error.message);
@@ -89,6 +91,7 @@ export async function CityBoundary(
 
 async function handleOSMBoundary(
     osmId: number,
+    parentOsmId: number | undefined,
     context: InvocationContext,
 ): Promise<HttpResponseInit> {
     const cached = await getOSMGeoJSON(osmId);
@@ -97,7 +100,21 @@ async function handleOSMBoundary(
         return createSuccessResponse({ source: "osm", osm_id: osmId, cached: true, geojson: cached });
     }
 
-    const geojson = await fetchOSMBoundary(osmId);
+    let geojson = await fetchOSMBoundary(osmId);
+    if (!geojson && parentOsmId) {
+        context.log(`Boundary not available for R${osmId}, falling back to parent R${parentOsmId}`);
+        const parentCached = await getOSMGeoJSON(parentOsmId);
+        if (parentCached) {
+            context.log(`Cache hit: boundary-osm/R${parentOsmId}.geojson`);
+            return createSuccessResponse({ source: "osm", osm_id: parentOsmId, cached: true, geojson: parentCached });
+        }
+        geojson = await fetchOSMBoundary(parentOsmId);
+        if (geojson) {
+            await setOSMGeoJSON(parentOsmId, geojson);
+            context.log(`Fetched and cached: boundary-osm/R${parentOsmId}.geojson (fallback)`);
+            return createSuccessResponse({ source: "osm", osm_id: parentOsmId, cached: false, geojson });
+        }
+    }
     if (!geojson) {
         context.log(`CityBoundary 404: Boundary geometry not available for OSM relation R${osmId}`);
         return createErrorResponse(404, `Boundary geometry not available for OSM relation R${osmId}`);

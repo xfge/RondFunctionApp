@@ -194,13 +194,22 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     const rawOsmId = props.datasource?.raw?.osm_id;
     if (rawOsmId == null) return null;
 
+    // Find the next broader boundary as a fallback (one admin_level up)
+    const matchLevel = props.datasource?.raw?.admin_level ?? 0;
+    const parent = features.find((f) => {
+        const level = f.properties.datasource?.raw?.admin_level ?? 0;
+        return level < matchLevel && level > 2 && f.properties.datasource?.raw?.osm_id != null;
+    });
+    const parentOsmId = parent?.properties.datasource?.raw?.osm_id;
+
     const result: GeoapifyMatchResult = {
         osmId: Math.abs(rawOsmId),
         name: props.name ?? "?",
         nameInternational: props.name_international ?? {},
         categories: props.categories ?? [],
         matchedBy,
-        adminLevel: String(props.datasource?.raw?.admin_level ?? "?"),
+        adminLevel: String(matchLevel || "?"),
+        parentOsmId: parentOsmId ? Math.abs(parentOsmId) : undefined,
     };
 
     return applyOsmIdRemap(result);

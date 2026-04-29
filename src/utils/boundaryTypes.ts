@@ -41,6 +41,8 @@ export interface GeoapifyMatchResult {
     categories: string[];
     matchedBy: 'name' | 'contains' | 'area_contains' | 'category' | 'admin_level' | 'hardcoded';
     adminLevel: string;
+    /** OSM ID of the next broader boundary, used as fallback when primary geometry is unavailable. */
+    parentOsmId?: number;
 }
 
 // --- AMap ---
