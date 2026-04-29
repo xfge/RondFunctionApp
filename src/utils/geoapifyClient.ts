@@ -110,18 +110,29 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         });
 
     /**
-     * Filter features to admin_level > 2 and <= 8, sort broad → specific,
-     * then return the first whose names contain the normalised target string.
+     * Filter features to admin_level > 2 and <= 8, sort by admin_level in the
+     * requested direction, then return the first whose names contain the
+     * normalised target string.
+     *
+     * `direction` controls preference when multiple features contain the target:
+     *  - "asc"  (broad → specific): prefer broader boundaries. Used for city-name
+     *    matches where the target is the city itself (e.g. "乌鲁木齐" should
+     *    pick "乌鲁木齐市", not a sub-district that also contains the substring).
+     *  - "desc" (specific → broad): prefer narrower boundaries. Used for area
+     *    matches where the target is a containing region (e.g. area "Victoria"
+     *    should pick "City of Melbourne" inside it, not the state itself).
      */
-    const findContainsMatch = (norm: string): GeoapifyFeature | undefined =>
+    const findContainsMatch = (norm: string, direction: "asc" | "desc" = "asc"): GeoapifyFeature | undefined =>
         [...features]
             .filter((f) => {
                 const level = f.properties.datasource?.raw?.admin_level ?? 0;
                 return level > 2 && level <= 8;
             })
-            .sort((a, b) =>
-                (a.properties.datasource?.raw?.admin_level ?? 0) -
-                (b.properties.datasource?.raw?.admin_level ?? 0))
+            .sort((a, b) => {
+                const diff = (a.properties.datasource?.raw?.admin_level ?? 0) -
+                    (b.properties.datasource?.raw?.admin_level ?? 0);
+                return direction === "asc" ? diff : -diff;
+            })
             .find((f) => featureNamesContain(f, norm));
 
     // 1a. Exact name match: city name against feature names (case- and diacritic-insensitive)
@@ -144,11 +155,14 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         : undefined;
 
     // 3. Area match: area name against feature names (case- and diacritic-insensitive).
-    //    Uses the same filter/sort/find logic as containsMatch (admin_level > 2 && <= 8,
-    //    broad → specific) so that short device-reported strings like "Ha Noi" still
-    //    match feature names like "Thành phố Hà Nội".
+    //    Uses the same filter logic as containsMatch (admin_level > 2 && <= 8) but
+    //    sorts specific → broad so that when the device-reported `area` is a
+    //    containing region (e.g. "Victoria" the state), we still pick the city
+    //    inside it (e.g. "City of Melbourne") rather than the state feature itself.
+    //    Short device-reported strings like "Ha Noi" still match "Thành phố Hà Nội"
+    //    because it is the only feature whose name contains the substring.
     const areaMatch = !anyNameMatch && !countryMatch && area
-        ? findContainsMatch(normalize(area))
+        ? findContainsMatch(normalize(area), "desc")
         : undefined;
 
     // 4. Category match
