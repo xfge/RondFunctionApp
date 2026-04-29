@@ -4,6 +4,7 @@ const CITY_STATES: Record<string, { osmId: number; amapName?: string }> = {
     MO: { osmId: 1867188, amapName: "澳门特别行政区" },
     SG: { osmId: 536780 },
     MC: { osmId: 1124039 },
+    SM: { osmId: 54624 },
 };
 
 export interface RoutingResult {
