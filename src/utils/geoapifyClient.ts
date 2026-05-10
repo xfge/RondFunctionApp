@@ -133,8 +133,10 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
                 (b.properties.datasource?.raw?.admin_level ?? 0))
             .find((f) => featureNamesContain(f, norm));
 
-    // 1a. Exact name match: city name against feature names (case- and diacritic-insensitive)
-    const nameMatch = features.find((f) => featureNamesMatch(f, cityNorm));
+    // 1a. Exact name match — prefer primary name over international names
+    const nameMatch =
+        features.find((f) => f.properties.name != null && normalize(f.properties.name) === cityNorm) ??
+        features.find((f) => featureNamesMatch(f, cityNorm));
 
     // 1b. Contains name match: e.g. "乌鲁木齐" in "乌鲁木齐市", "El Torno" in "Municipio El Torno"
     //     Only consider admin_level ≤ 8 to skip neighbourhoods/suburbs.
