@@ -80,7 +80,7 @@ export async function fetchGeoapifyMatch(
 
 /** Strip diacritics/accents and special letters for fuzzy name comparison. */
 function normalize(s: string): string {
-    return s.toLowerCase()
+    return s.trim().toLowerCase()
         .replace(/\u0131/g, "i")    // Turkish ı
         .replace(/\u0142/g, "l")    // Polish ł
         .replace(/\u00f8/g, "o")    // Scandinavian ø
