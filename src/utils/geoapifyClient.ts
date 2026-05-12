@@ -40,6 +40,24 @@ const OSM_ID_REMAP: Record<number, { osmId: number; label: string }> = {
 };
 
 /**
+ * Hardcoded input-city-name overrides.
+ *
+ * When the input city name (normalised) matches a key, the configured OSM
+ * relation is used directly, bypassing the regular name/area/category/fallback
+ * matching. Use this for cases where Geoapify cannot reliably surface the
+ * intended boundary — typically XPCC enclave cities in Xinjiang that share
+ * coordinates with a surrounding host city.
+ *
+ * Values are absolute (unsigned) OSM relation IDs.
+ */
+const CITY_NAME_HARDCODE: Record<string, { osmId: number; label: string }> = {
+    // 博乐市 (Bole) coordinates resolve to the surrounding XPCC enclave 双河市
+    // (Shuanghe, R9068337, admin_level=6, county_level). Geoapify otherwise
+    // falls back to the province (新疆维吾尔自治区, R153310) via area_contains.
+    "博乐市": { osmId: 9068337, label: "双河市" },
+};
+
+/**
  * Resolve coordinates + city name to an OSM relation ID and city metadata.
  * City-states (HK, MO, SG, MC) should be handled by the caller before calling this.
  * Returns null if no matching feature is found.
@@ -95,6 +113,31 @@ function normalize(s: string): string {
 /** Pick the matching feature by name, area, category, or admin_level and return its OSM relation ID. */
 function extractMatch(features: GeoapifyFeature[], city: string, area?: string, countryCode?: string): GeoapifyMatchResult | null {
     const cityNorm = normalize(city);
+
+    // 0. Hardcoded city-name override: bypass regular matching entirely.
+    //    Keys in CITY_NAME_HARDCODE must be in normalised form (see normalize()).
+    const hardcoded = CITY_NAME_HARDCODE[cityNorm];
+    if (hardcoded) {
+        const hardcodedFeature = features.find(
+            (f) => Math.abs(f.properties.datasource?.raw?.osm_id ?? 0) === hardcoded.osmId,
+        );
+        const props = hardcodedFeature?.properties;
+        const matchLevel = props?.datasource?.raw?.admin_level ?? 0;
+        const parent = features.find((f) => {
+            const level = f.properties.datasource?.raw?.admin_level ?? 0;
+            return level < matchLevel && level > 2 && f.properties.datasource?.raw?.osm_id != null;
+        });
+        const parentOsmId = parent?.properties.datasource?.raw?.osm_id;
+        return {
+            osmId: hardcoded.osmId,
+            name: props?.name ?? hardcoded.label,
+            nameInternational: props?.name_international ?? {},
+            categories: props?.categories ?? [],
+            matchedBy: "hardcoded",
+            adminLevel: String(matchLevel || "?"),
+            parentOsmId: parentOsmId ? Math.abs(parentOsmId) : undefined,
+        };
+    }
 
     /** Collect all names (primary + international) for a feature. */
     const featureNames = (feature: GeoapifyFeature): string[] => {
