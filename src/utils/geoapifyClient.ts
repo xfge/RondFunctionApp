@@ -11,18 +11,34 @@ const CITY_CATEGORIES = ["administrative.county_level", "administrative.city_lev
  * Country-specific city admin_level overrides.
  * Geoapify sometimes categorises cities under unexpected categories
  * (e.g. Taiwan cities are "country_part_level" instead of "city_level").
- * Map country code → the OSM admin_level that represents a city.
+ * Map country code → ordered list of OSM admin_levels that represent a city;
+ * the first level with a matching feature in the response is used.
  */
-const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number> = {
-    CN: 5, // 乌鲁木齐市, 文山壮族苗族自治州, etc. are admin_level=5
-    TW: 4, // 臺北市, 高雄市, etc. are admin_level=4
-    JP: 4, // 神奈川県, 東京都, etc. are admin_level=4
-    VN: 4, // Thành phố Hà Nội, TP. Hồ Chí Minh, etc. are admin_level=4
-    ID: 5, // Kabupaten Tangerang, Kota Jakarta Selatan, etc. are admin_level=5
-    AU: 6, // City of Melbourne, City of Sydney, etc. are LGAs at admin_level=6
-    GB: 6, // Dorset, Greater London, etc. are ceremonial/metropolitan counties at admin_level=6
-           // (avoids fallback to England/Scotland/Wales at admin_level=4)
+const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number[]> = {
+    CN: [5, 6], // 5 = prefecture-level (乌鲁木齐市, 文山壮族苗族自治州),
+                // 6 = county-level city / district (双河市, 博乐市) used when
+                //     the prefecture-level boundary is absent (e.g. XPCC enclaves).
+    TW: [4],    // 臺北市, 高雄市, etc. are admin_level=4
+    JP: [4],    // 神奈川県, 東京都, etc. are admin_level=4
+    VN: [4],    // Thành phố Hà Nội, TP. Hồ Chí Minh, etc. are admin_level=4
+    ID: [5],    // Kabupaten Tangerang, Kota Jakarta Selatan, etc. are admin_level=5
+    AU: [6],    // City of Melbourne, City of Sydney, etc. are LGAs at admin_level=6
+    GB: [6],    // Dorset, Greater London, etc. are ceremonial/metropolitan counties at admin_level=6
+                // (avoids fallback to England/Scotland/Wales at admin_level=4)
 };
+
+/**
+ * Countries for which the `area_contains` step is skipped when no name /
+ * contains / country admin_level match is found. Use for countries where the
+ * device-reported area string is likely to contain a broader administrative
+ * region name (e.g. CN's province name appears in address strings) which
+ * would otherwise cause `area_contains` to select an over-broad boundary.
+ */
+const COUNTRY_SKIP_AREA_CONTAINS = new Set<string>([
+    "CN", // area_contains would otherwise match the surrounding province
+          // (e.g. 新疆维吾尔自治区 for 博乐市) when the prefecture/county-level
+          // city boundary cannot be found by name.
+]);
 
 /**
  * Post-Geoapify OSM ID remaps.
@@ -50,10 +66,9 @@ const OSM_ID_REMAP: Record<number, { osmId: number; label: string }> = {
  * device-reported area string happens to contain the province name.
  */
 const CITY_NAME_ADMIN_LEVEL_PIN: Record<string, number> = {
-    // 博乐市 (Bole): coordinates fall inside the XPCC enclave 双河市 (Shuanghe,
-    // admin_level=6, county_level). Without this pin, area_contains matches
-    // the surrounding province 新疆维吾尔自治区 at admin_level=4.
-    "博乐市": 6,
+    // (Currently empty.) Add an entry only when neither the country-level rule
+    // (COUNTRY_CITY_ADMIN_LEVEL / COUNTRY_SKIP_AREA_CONTAINS) nor the regular
+    // name/contains matching can produce the right boundary for an input city.
 };
 
 /**
@@ -168,15 +183,16 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     //     Sort by admin_level ascending (broad → specific) to prefer broader boundaries.
     const containsMatch = !nameMatch ? findContainsMatch(cityNorm) : undefined;
 
-    // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4)
-    const cityAdminLevel = countryCode ? COUNTRY_CITY_ADMIN_LEVEL[countryCode] : undefined;
+    // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4).
+    //    Tries the configured levels in order and uses the first feature found.
+    const cityAdminLevels = countryCode ? COUNTRY_CITY_ADMIN_LEVEL[countryCode] : undefined;
     const anyNameMatch = nameMatch ?? containsMatch;
 
-    const countryMatch = !anyNameMatch && cityAdminLevel != null
-        ? features.find((f) => {
+    const countryMatch = !anyNameMatch && cityAdminLevels != null
+        ? cityAdminLevels.reduce<GeoapifyFeature | undefined>((found, target) => found ?? features.find((f) => {
             const level = f.properties.datasource?.raw?.admin_level ?? 0;
-            return level === cityAdminLevel && f.properties.datasource?.raw?.osm_id != null;
-        })
+            return level === target && f.properties.datasource?.raw?.osm_id != null;
+        }), undefined)
         : undefined;
 
     // 3. Per-input admin_level pin: pick the feature at the configured admin_level.
@@ -192,8 +208,11 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     //    Uses the same filter/sort/find logic as containsMatch (admin_level > 2 && <= 8,
     //    broad → specific) so that short device-reported strings like "Ha Noi" still
     //    match feature names like "Thành phố Hà Nội".
-    //    Skipped when an admin_level pin is configured for the input city.
-    const areaMatch = !anyNameMatch && !countryMatch && pinnedLevel == null && area
+    //    Skipped when an admin_level pin is configured for the input city, or when
+    //    the country is in COUNTRY_SKIP_AREA_CONTAINS (e.g. CN — falls through to
+    //    category/fallback so an over-broad province isn't selected).
+    const skipAreaContains = countryCode ? COUNTRY_SKIP_AREA_CONTAINS.has(countryCode) : false;
+    const areaMatch = !anyNameMatch && !countryMatch && pinnedLevel == null && !skipAreaContains && area
         ? findContainsMatch(normalize(area))
         : undefined;
 
