@@ -56,22 +56,6 @@ const OSM_ID_REMAP: Record<number, { osmId: number; label: string }> = {
 };
 
 /**
- * Per-input-city admin_level pins.
- *
- * When the (normalised) input city name matches a key, the `area_contains`
- * step is skipped; instead, the response feature whose `admin_level` equals
- * the configured value is selected (after name / contains / country matches
- * have been tried). Use this for cases where `area_contains` would otherwise
- * match an over-broad boundary (e.g. the surrounding province) because the
- * device-reported area string happens to contain the province name.
- */
-const CITY_NAME_ADMIN_LEVEL_PIN: Record<string, number> = {
-    // (Currently empty.) Add an entry only when neither the country-level rule
-    // (COUNTRY_CITY_ADMIN_LEVEL / COUNTRY_SKIP_AREA_CONTAINS) nor the regular
-    // name/contains matching can produce the right boundary for an input city.
-};
-
-/**
  * Resolve coordinates + city name to an OSM relation ID and city metadata.
  * City-states (HK, MO, SG, MC) should be handled by the caller before calling this.
  * Returns null if no matching feature is found.
@@ -127,12 +111,6 @@ function normalize(s: string): string {
 /** Pick the matching feature by name, area, category, or admin_level and return its OSM relation ID. */
 function extractMatch(features: GeoapifyFeature[], city: string, area?: string, countryCode?: string): GeoapifyMatchResult | null {
     const cityNorm = normalize(city);
-
-    // 0. Per-input admin_level pin: if configured for this input city, the
-    //    area_contains step is skipped, and we instead try to find a feature
-    //    at the configured admin_level. Falls through to category/fallback if
-    //    no such feature exists.
-    const pinnedLevel = CITY_NAME_ADMIN_LEVEL_PIN[cityNorm];
 
     /** Collect all names (primary + international) for a feature. */
     const featureNames = (feature: GeoapifyFeature): string[] => {
@@ -195,36 +173,26 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         }), undefined)
         : undefined;
 
-    // 3. Per-input admin_level pin: pick the feature at the configured admin_level.
-    //    When set, this also suppresses the area_contains step below.
-    const pinMatch = !anyNameMatch && !countryMatch && pinnedLevel != null
-        ? features.find((f) => {
-            const level = f.properties.datasource?.raw?.admin_level ?? 0;
-            return level === pinnedLevel && f.properties.datasource?.raw?.osm_id != null;
-        })
-        : undefined;
-
-    // 4. Area match: area name against feature names (case- and diacritic-insensitive).
+    // 3. Area match: area name against feature names (case- and diacritic-insensitive).
     //    Uses the same filter/sort/find logic as containsMatch (admin_level > 2 && <= 8,
     //    broad → specific) so that short device-reported strings like "Ha Noi" still
     //    match feature names like "Thành phố Hà Nội".
-    //    Skipped when an admin_level pin is configured for the input city, or when
-    //    the country is in COUNTRY_SKIP_AREA_CONTAINS (e.g. CN — falls through to
-    //    category/fallback so an over-broad province isn't selected).
+    //    Skipped when the country is in COUNTRY_SKIP_AREA_CONTAINS (e.g. CN — falls
+    //    through to category/fallback so an over-broad province isn't selected).
     const skipAreaContains = countryCode ? COUNTRY_SKIP_AREA_CONTAINS.has(countryCode) : false;
-    const areaMatch = !anyNameMatch && !countryMatch && pinnedLevel == null && !skipAreaContains && area
+    const areaMatch = !anyNameMatch && !countryMatch && !skipAreaContains && area
         ? findContainsMatch(normalize(area))
         : undefined;
 
-    // 5. Category match
-    const categoryMatch = !anyNameMatch && !areaMatch && !countryMatch && !pinMatch ? features.find((feature) => {
+    // 4. Category match
+    const categoryMatch = !anyNameMatch && !areaMatch && !countryMatch ? features.find((feature) => {
         const cats = feature.properties.categories;
         if (!cats) return false;
         return CITY_CATEGORIES.some((c) => cats.includes(c));
     }) : undefined;
 
-    // 6. Fallback: most specific boundary (highest admin_level ≤ 8, skipping sub-city wards/neighborhoods)
-    const fallbackMatch = !anyNameMatch && !areaMatch && !countryMatch && !pinMatch && !categoryMatch
+    // 5. Fallback: most specific boundary (highest admin_level ≤ 8, skipping sub-city wards/neighborhoods)
+    const fallbackMatch = !anyNameMatch && !areaMatch && !countryMatch && !categoryMatch
         ? [...features]
               .filter((f) => {
                   const level = f.properties.datasource?.raw?.admin_level ?? 0;
@@ -236,13 +204,12 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
               [0] ?? null
         : null;
 
-    const match = anyNameMatch ?? countryMatch ?? pinMatch ?? areaMatch ?? categoryMatch ?? fallbackMatch;
+    const match = anyNameMatch ?? countryMatch ?? areaMatch ?? categoryMatch ?? fallbackMatch;
     if (!match) return null;
 
     const matchedBy = nameMatch ? "name"
         : containsMatch ? "contains"
         : countryMatch ? "country_admin_level"
-        : pinMatch ? "admin_level_pin"
         : areaMatch ? "area_contains"
         : categoryMatch ? "category"
         : "fallback";
