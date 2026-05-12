@@ -20,6 +20,8 @@ const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number> = {
     VN: 4, // Thành phố Hà Nội, TP. Hồ Chí Minh, etc. are admin_level=4
     ID: 5, // Kabupaten Tangerang, Kota Jakarta Selatan, etc. are admin_level=5
     AU: 6, // City of Melbourne, City of Sydney, etc. are LGAs at admin_level=6
+    GB: 6, // Dorset, Greater London, etc. are ceremonial/metropolitan counties at admin_level=6
+           // (avoids fallback to England/Scotland/Wales at admin_level=4)
 };
 
 /**
