@@ -81,9 +81,9 @@ export async function CityBoundary(
                 context.log(`CityBoundary 404: No Chinese name available for R${osmId}`);
                 return createErrorResponse(404, `No Chinese name available for R${osmId}`);
             }
-            return await handleAmapBoundary(osmId, amapName, amapFallbackName, context);
+            return await handleAmapBoundary(osmId, amapName, amapFallbackName, countryCode, context);
         }
-        return await handleOSMBoundary(osmId, parentOsmId, context);
+        return await handleOSMBoundary(osmId, parentOsmId, countryCode, context);
     } catch (error) {
         context.log(`Error in CityBoundary: ${error.message}`);
         return createErrorResponse(500, "Internal server error", error.message);
@@ -93,11 +93,13 @@ export async function CityBoundary(
 async function handleOSMBoundary(
     osmId: number,
     parentOsmId: number | undefined,
+    countryCode: string | undefined,
     context: InvocationContext,
 ): Promise<HttpResponseInit> {
+    const cc = countryCode ?? "none";
     const cached = await getOSMGeoJSON(osmId);
     if (cached) {
-        context.log(`Cache hit: boundary-osm/R${osmId}.geojson`);
+        context.log(`Cache hit: boundary-osm/R${osmId}.geojson (country_code=${cc})`);
         return createSuccessResponse({ source: "osm", osm_id: osmId, cached: true, geojson: cached });
     }
 
@@ -106,13 +108,13 @@ async function handleOSMBoundary(
         context.log(`Boundary not available for R${osmId}, falling back to parent R${parentOsmId}`);
         const parentCached = await getOSMGeoJSON(parentOsmId);
         if (parentCached) {
-            context.log(`Cache hit: boundary-osm/R${parentOsmId}.geojson`);
+            context.log(`Cache hit: boundary-osm/R${parentOsmId}.geojson (country_code=${cc})`);
             return createSuccessResponse({ source: "osm", osm_id: parentOsmId, cached: true, geojson: parentCached });
         }
         geojson = await fetchOSMBoundary(parentOsmId);
         if (geojson) {
             await setOSMGeoJSON(parentOsmId, geojson);
-            context.log(`Fetched and cached: boundary-osm/R${parentOsmId}.geojson (fallback)`);
+            context.log(`Fetched and cached: boundary-osm/R${parentOsmId}.geojson (fallback, country_code=${cc})`);
             return createSuccessResponse({ source: "osm", osm_id: parentOsmId, cached: false, geojson });
         }
     }
@@ -122,7 +124,7 @@ async function handleOSMBoundary(
     }
 
     await setOSMGeoJSON(osmId, geojson);
-    context.log(`Fetched and cached: boundary-osm/R${osmId}.geojson`);
+    context.log(`Fetched and cached: boundary-osm/R${osmId}.geojson (country_code=${cc})`);
     return createSuccessResponse({ source: "osm", osm_id: osmId, cached: false, geojson });
 }
 
@@ -130,11 +132,13 @@ async function handleAmapBoundary(
     osmId: number,
     chineseName: string,
     fallbackName: string | undefined,
+    countryCode: string | undefined,
     context: InvocationContext,
 ): Promise<HttpResponseInit> {
+    const cc = countryCode ?? "none";
     const cached = await getAmapGeoJSON(osmId);
     if (cached) {
-        context.log(`Cache hit: boundary-amap/R${osmId}.geojson`);
+        context.log(`Cache hit: boundary-amap/R${osmId}.geojson (country_code=${cc})`);
         return createSuccessResponse({ source: "amap", osm_id: osmId, cached: true, geojson: cached });
     }
 
@@ -151,7 +155,7 @@ async function handleAmapBoundary(
     }
 
     await setAmapGeoJSON(osmId, geojson);
-    context.log(`Fetched and cached: boundary-amap/R${osmId}.geojson (searched="${usedName}")`);
+    context.log(`Fetched and cached: boundary-amap/R${osmId}.geojson (searched="${usedName}", country_code=${cc})`);
     return createSuccessResponse({ source: "amap", osm_id: osmId, cached: false, geojson });
 }
 
