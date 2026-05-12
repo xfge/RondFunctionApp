@@ -39,7 +39,7 @@ export interface GeoapifyMatchResult {
     name: string;
     nameInternational: Record<string, string>;
     categories: string[];
-    matchedBy: 'name' | 'contains' | 'area_contains' | 'country_admin_level' | 'category' | 'fallback' | 'hardcoded';
+    matchedBy: 'name' | 'contains' | 'area_contains' | 'country_admin_level' | 'admin_level_pin' | 'category' | 'fallback' | 'hardcoded';
     adminLevel: string;
     /** OSM ID of the next broader boundary, used as fallback when primary geometry is unavailable. */
     parentOsmId?: number;
