@@ -11,17 +11,20 @@ const CITY_CATEGORIES = ["administrative.county_level", "administrative.city_lev
  * Country-specific city admin_level overrides.
  * Geoapify sometimes categorises cities under unexpected categories
  * (e.g. Taiwan cities are "country_part_level" instead of "city_level").
- * Map country code → the OSM admin_level that represents a city.
+ * Map country code → ordered list of OSM admin_levels that represent a city;
+ * the first level with a matching feature in the response is used.
  */
-const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number> = {
-    CN: 5, // 乌鲁木齐市, 文山壮族苗族自治州, etc. are admin_level=5
-    TW: 4, // 臺北市, 高雄市, etc. are admin_level=4
-    JP: 4, // 神奈川県, 東京都, etc. are admin_level=4
-    VN: 4, // Thành phố Hà Nội, TP. Hồ Chí Minh, etc. are admin_level=4
-    ID: 5, // Kabupaten Tangerang, Kota Jakarta Selatan, etc. are admin_level=5
-    AU: 6, // City of Melbourne, City of Sydney, etc. are LGAs at admin_level=6
-    GB: 6, // Dorset, Greater London, etc. are ceremonial/metropolitan counties at admin_level=6
-           // (avoids fallback to England/Scotland/Wales at admin_level=4)
+const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number[]> = {
+    CN: [5, 6], // 5 = prefecture-level (乌鲁木齐市, 文山壮族苗族自治州),
+                // 6 = county-level city / district (双河市, 博乐市) used when
+                //     the prefecture-level boundary is absent (e.g. XPCC enclaves).
+    TW: [4],    // 臺北市, 高雄市, etc. are admin_level=4
+    JP: [4],    // 神奈川県, 東京都, etc. are admin_level=4
+    VN: [4],    // Thành phố Hà Nội, TP. Hồ Chí Minh, etc. are admin_level=4
+    ID: [5],    // Kabupaten Tangerang, Kota Jakarta Selatan, etc. are admin_level=5
+    AU: [6],    // City of Melbourne, City of Sydney, etc. are LGAs at admin_level=6
+    GB: [6],    // Dorset, Greater London, etc. are ceremonial/metropolitan counties at admin_level=6
+                // (avoids fallback to England/Scotland/Wales at admin_level=4)
 };
 
 /**
@@ -145,15 +148,16 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     //     Sort by admin_level ascending (broad → specific) to prefer broader boundaries.
     const containsMatch = !nameMatch ? findContainsMatch(cityNorm) : undefined;
 
-    // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4)
-    const cityAdminLevel = countryCode ? COUNTRY_CITY_ADMIN_LEVEL[countryCode] : undefined;
+    // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4).
+    //    Tries the configured levels in order and uses the first feature found.
+    const cityAdminLevels = countryCode ? COUNTRY_CITY_ADMIN_LEVEL[countryCode] : undefined;
     const anyNameMatch = nameMatch ?? containsMatch;
 
-    const countryMatch = !anyNameMatch && cityAdminLevel != null
-        ? features.find((f) => {
+    const countryMatch = !anyNameMatch && cityAdminLevels != null
+        ? cityAdminLevels.reduce<GeoapifyFeature | undefined>((found, target) => found ?? features.find((f) => {
             const level = f.properties.datasource?.raw?.admin_level ?? 0;
-            return level === cityAdminLevel && f.properties.datasource?.raw?.osm_id != null;
-        })
+            return level === target && f.properties.datasource?.raw?.osm_id != null;
+        }), undefined)
         : undefined;
 
     // 3. Area match: area name against feature names (case- and diacritic-insensitive).
@@ -189,8 +193,8 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
 
     const matchedBy = nameMatch ? "name"
         : containsMatch ? "contains"
-        : areaMatch ? "area_contains"
         : countryMatch ? "country_admin_level"
+        : areaMatch ? "area_contains"
         : categoryMatch ? "category"
         : "fallback";
 
