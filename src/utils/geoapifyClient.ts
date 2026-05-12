@@ -28,19 +28,6 @@ const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number[]> = {
 };
 
 /**
- * Countries for which the `area_contains` step is skipped when no name /
- * contains / country admin_level match is found. Use for countries where the
- * device-reported area string is likely to contain a broader administrative
- * region name (e.g. CN's province name appears in address strings) which
- * would otherwise cause `area_contains` to select an over-broad boundary.
- */
-const COUNTRY_SKIP_AREA_CONTAINS = new Set<string>([
-    "CN", // area_contains would otherwise match the surrounding province
-          // (e.g. 新疆维吾尔自治区 for 博乐市) when the prefecture/county-level
-          // city boundary cannot be found by name.
-]);
-
-/**
  * Post-Geoapify OSM ID remaps.
  *
  * Geoapify matches still run as usual; if the resolved OSM relation ID appears
@@ -177,10 +164,7 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     //    Uses the same filter/sort/find logic as containsMatch (admin_level > 2 && <= 8,
     //    broad → specific) so that short device-reported strings like "Ha Noi" still
     //    match feature names like "Thành phố Hà Nội".
-    //    Skipped when the country is in COUNTRY_SKIP_AREA_CONTAINS (e.g. CN — falls
-    //    through to category/fallback so an over-broad province isn't selected).
-    const skipAreaContains = countryCode ? COUNTRY_SKIP_AREA_CONTAINS.has(countryCode) : false;
-    const areaMatch = !anyNameMatch && !countryMatch && !skipAreaContains && area
+    const areaMatch = !anyNameMatch && !countryMatch && area
         ? findContainsMatch(normalize(area))
         : undefined;
 
