@@ -38,7 +38,7 @@ export async function CityBoundaryDB(
             return createErrorResponse(404, `No boundary found for "${city}"${area ? ` or area "${area}"` : ""} near (${lat}, ${lng})`);
         }
 
-        context.log(`CityBoundaryDB: ${city} → ${result.name} (R${result.osm_id}, level=${result.admin_level}, matched_by=${matchedBy})`);
+        context.log(`CityBoundaryDB: ${city} → ${result.name} (R${result.osm_id}, level=${result.admin_level}, matched_by=${matchedBy}, country_code=${countryCode ?? "none"})`);
 
         return createSuccessResponse({
             source: "db",
