@@ -95,7 +95,7 @@ function normalize(s: string): string {
         .replace(/\u0111/g, "d")    // Vietnamese/Croatian đ
         .replace(/\u00e6/g, "ae")   // æ ligature
         .replace(/\u00df/g, "ss")   // German ß
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        .normalize("NFD").replace(/\p{M}/gu, "");
 }
 
 /** Pick the matching feature by name, area, category, or admin_level and return its OSM relation ID. */
