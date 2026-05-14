@@ -28,6 +28,7 @@ const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number[]> = {
     AU: [6],    // City of Melbourne, City of Sydney, etc. are LGAs at admin_level=6
     GB: [6],    // Dorset, Greater London, etc. are ceremonial/metropolitan counties at admin_level=6
                 // (avoids fallback to England/Scotland/Wales at admin_level=4)
+    CH: [8],    // Municipalities (Gemeinden) are admin_level=8 (e.g. Vitznau, Basel)
 };
 
 /**
