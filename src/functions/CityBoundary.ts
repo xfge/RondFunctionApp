@@ -61,7 +61,7 @@ export async function CityBoundary(
             osmId = match.osmId;
             parentOsmId = match.parentOsmId;
             const mismatchTag = match.matchedBy === "name" ? "" : " [MISMATCH]";
-            context.log(`Geoapify resolved${mismatchTag}: "${city}" → R${osmId} "${match.name}" admin_level=${match.adminLevel} (${match.matchedBy}${countryCode ? `, ${countryCode}` : ""})`);
+            context.log(`Geoapify resolved${mismatchTag}: "${city}" → R${osmId} "${match.name}" admin_level=${match.adminLevel} (${match.matchedBy}${countryCode ? `, ${countryCode}` : ""}) name_international=${JSON.stringify(match.nameInternational)}`);
 
             if (route.source === "amap") {
                 amapName = match.nameInternational["zh"];
