@@ -40,6 +40,8 @@ export interface GeoapifyMatchResult {
     nameInternational: Record<string, string>;
     categories: string[];
     matchedBy: 'name' | 'contains' | 'area_contains' | 'country_admin_level' | 'category' | 'fallback' | 'hardcoded';
+    /** The specific name variant that matched (for contains/area_contains matches). */
+    matchedName?: string;
     adminLevel: string;
     /** OSM ID of the next broader boundary, used as fallback when primary geometry is unavailable. */
     parentOsmId?: number;

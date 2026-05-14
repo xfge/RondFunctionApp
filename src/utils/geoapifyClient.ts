@@ -129,9 +129,9 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     const featureNamesMatch = (feature: GeoapifyFeature, target: string): boolean =>
         featureNames(feature).some((n) => normalize(n) === target);
 
-    /** Check if the target is contained in any feature name (or vice versa). */
-    const featureNamesContain = (feature: GeoapifyFeature, target: string): boolean =>
-        featureNames(feature).some((n) => {
+    /** Return the first feature name that contains (or is contained by) the target, or undefined. */
+    const featureNameContaining = (feature: GeoapifyFeature, target: string): string | undefined =>
+        featureNames(feature).find((n) => {
             const norm = normalize(n);
             return norm.includes(target) || target.includes(norm);
         });
@@ -143,16 +143,25 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
      * are more likely to contain a city name as a substring in decorated forms
      * like "Emirate of X" or "Province of Y".
      */
-    const findContainsMatch = (norm: string): GeoapifyFeature | undefined =>
-        [...features]
+    let containsMatchedName: string | undefined;
+    const findContainsMatch = (norm: string): GeoapifyFeature | undefined => {
+        const sorted = [...features]
             .filter((f) => {
                 const level = f.properties.datasource?.raw?.admin_level ?? 0;
                 return level > 2 && level <= 8;
             })
             .sort((a, b) =>
                 (b.properties.datasource?.raw?.admin_level ?? 0) -
-                (a.properties.datasource?.raw?.admin_level ?? 0))
-            .find((f) => featureNamesContain(f, norm));
+                (a.properties.datasource?.raw?.admin_level ?? 0));
+        for (const f of sorted) {
+            const matched = featureNameContaining(f, norm);
+            if (matched) {
+                containsMatchedName = matched;
+                return f;
+            }
+        }
+        return undefined;
+    };
 
     // 1a. Exact name match — prefer primary name over international names.
     //     Sort by admin_level descending (specific → broad) so we pick the most
@@ -244,6 +253,7 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         nameInternational: props.name_international ?? {},
         categories: props.categories ?? [],
         matchedBy,
+        matchedName: (containsMatch || areaMatch) ? containsMatchedName : undefined,
         adminLevel: String(matchLevel || "?"),
         parentOsmId: parentOsmId ? Math.abs(parentOsmId) : undefined,
     };
