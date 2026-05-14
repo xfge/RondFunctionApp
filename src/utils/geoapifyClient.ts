@@ -106,17 +106,19 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     const featureNames = (feature: GeoapifyFeature): string[] => {
         const props = feature.properties;
         const names: string[] = [];
-        if (props.name) names.push(props.name);
+        // Geoapify packs variants (e.g. simplified/traditional Chinese,
+        // or multilingual names like "Schweiz/Suisse/Svizzera/Svizra")
+        // into a single semicolon- or slash-separated string.
+        const splitNames = (v: string) => {
+            for (const part of v.split(/[;/]/)) {
+                const trimmed = part.trim();
+                if (trimmed) names.push(trimmed);
+            }
+        };
+        if (props.name) splitNames(props.name);
         if (props.name_international) {
             for (const v of Object.values(props.name_international)) {
-                if (typeof v === "string") {
-                    // Geoapify packs variants (e.g. simplified/traditional Chinese)
-                    // into a single semicolon-separated string.
-                    for (const part of v.split(";")) {
-                        const trimmed = part.trim();
-                        if (trimmed) names.push(trimmed);
-                    }
-                }
+                if (typeof v === "string") splitNames(v);
             }
         }
         return names;
