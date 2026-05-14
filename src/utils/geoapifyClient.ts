@@ -153,10 +153,22 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
                 (a.properties.datasource?.raw?.admin_level ?? 0))
             .find((f) => featureNamesContain(f, norm));
 
-    // 1a. Exact name match — prefer primary name over international names
+    // 1a. Exact name match — prefer primary name over international names.
+    //     Sort by admin_level descending (specific → broad) so we pick the most
+    //     specific boundary first (e.g. admin_level 8 district over admin_level 2
+    //     country), but skip sub-city wards/neighbourhoods (admin_level > 8).
+    const sortedByLevel = [...features]
+        .sort((a, b) => {
+            const la = a.properties.datasource?.raw?.admin_level ?? 0;
+            const lb = b.properties.datasource?.raw?.admin_level ?? 0;
+            // Treat admin_level > 8 as less preferred (sub-city)
+            const wa = la > 8 ? -la : la;
+            const wb = lb > 8 ? -lb : lb;
+            return wb - wa;
+        });
     const nameMatch =
-        features.find((f) => f.properties.name != null && normalize(f.properties.name) === cityNorm) ??
-        features.find((f) => featureNamesMatch(f, cityNorm));
+        sortedByLevel.find((f) => f.properties.name != null && normalize(f.properties.name) === cityNorm) ??
+        sortedByLevel.find((f) => featureNamesMatch(f, cityNorm));
 
     // 1b. Contains name match: e.g. "乌鲁木齐" in "乌鲁木齐市", "El Torno" in "Municipio El Torno"
     //     Only consider admin_level ≤ 8 to skip neighbourhoods/suburbs.
