@@ -109,7 +109,14 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         if (props.name) names.push(props.name);
         if (props.name_international) {
             for (const v of Object.values(props.name_international)) {
-                if (typeof v === "string") names.push(v);
+                if (typeof v === "string") {
+                    // Geoapify packs variants (e.g. simplified/traditional Chinese)
+                    // into a single semicolon-separated string.
+                    for (const part of v.split(";")) {
+                        const trimmed = part.trim();
+                        if (trimmed) names.push(trimmed);
+                    }
+                }
             }
         }
         return names;
@@ -127,8 +134,11 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         });
 
     /**
-     * Filter features to admin_level > 2 and <= 8, sort broad → specific,
+     * Filter features to admin_level > 2 and <= 8, sort specific → broad,
      * then return the first whose names contain the normalised target string.
+     * Prefer more specific boundaries because broader ones (provinces, states)
+     * are more likely to contain a city name as a substring in decorated forms
+     * like "Emirate of X" or "Province of Y".
      */
     const findContainsMatch = (norm: string): GeoapifyFeature | undefined =>
         [...features]
@@ -137,8 +147,8 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
                 return level > 2 && level <= 8;
             })
             .sort((a, b) =>
-                (a.properties.datasource?.raw?.admin_level ?? 0) -
-                (b.properties.datasource?.raw?.admin_level ?? 0))
+                (b.properties.datasource?.raw?.admin_level ?? 0) -
+                (a.properties.datasource?.raw?.admin_level ?? 0))
             .find((f) => featureNamesContain(f, norm));
 
     // 1a. Exact name match — prefer primary name over international names
@@ -148,7 +158,7 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
 
     // 1b. Contains name match: e.g. "乌鲁木齐" in "乌鲁木齐市", "El Torno" in "Municipio El Torno"
     //     Only consider admin_level ≤ 8 to skip neighbourhoods/suburbs.
-    //     Sort by admin_level ascending (broad → specific) to prefer broader boundaries.
+    //     Sort by admin_level descending (specific → broad) to prefer city-level boundaries.
     const containsMatch = !nameMatch ? findContainsMatch(cityNorm) : undefined;
 
     // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4).
