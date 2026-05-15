@@ -29,6 +29,7 @@ const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number[]> = {
     GB: [6],    // Dorset, Greater London, etc. are ceremonial/metropolitan counties at admin_level=6
                 // (avoids fallback to England/Scotland/Wales at admin_level=4)
     CH: [8],    // Municipalities (Gemeinden) are admin_level=8 (e.g. Vitznau, Basel)
+    SE: [7],    // Kommuner (municipalities) are admin_level=7 (e.g. Stockholms kommun, Solna kommun)
 };
 
 /**
