@@ -32,6 +32,7 @@ const COUNTRY_CITY_ADMIN_LEVEL: Record<string, number[]> = {
     SE: [7],    // Kommuner (municipalities) are admin_level=7 (e.g. Stockholms kommun, Solna kommun)
     IT: [8],    // Comuni (municipalities) are admin_level=8 (e.g. Milano, Roma)
     DE: [8],    // Gemeinden (municipalities) are admin_level=8 (e.g. Treuchtlingen, München)
+    NL: [8],    // Gemeenten (municipalities) are admin_level=8 (e.g. Zaanstad, Amsterdam)
 };
 
 /**
