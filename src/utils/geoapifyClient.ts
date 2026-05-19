@@ -201,20 +201,20 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         }), undefined)
         : undefined;
 
-    // 3. Area match: area name against feature names (case- and diacritic-insensitive).
-    //    Uses the same filter/sort/find logic as containsMatch (admin_level > 2 && <= 8,
-    //    broad → specific) so that short device-reported strings like "Ha Noi" still
-    //    match feature names like "Thành phố Hà Nội".
-    const areaMatch = !anyNameMatch && !countryMatch && area
-        ? findContainsMatch(normalize(area))
-        : undefined;
-
-    // 4. Category match
-    const categoryMatch = !anyNameMatch && !areaMatch && !countryMatch ? features.find((feature) => {
+    // 3. Category match
+    const categoryMatch = !anyNameMatch && !countryMatch ? features.find((feature) => {
         const cats = feature.properties.categories;
         if (!cats) return false;
         return CITY_CATEGORIES.some((c) => cats.includes(c));
     }) : undefined;
+
+    // 4. Area match: area name against feature names (case- and diacritic-insensitive).
+    //    Keep this after category matching because short device-reported strings
+    //    like "CA" can otherwise select broad regions such as California before
+    //    a county/city-level category match.
+    const areaMatch = !anyNameMatch && !countryMatch && !categoryMatch && area
+        ? findContainsMatch(normalize(area))
+        : undefined;
 
     // 5. Fallback: most specific boundary (highest admin_level ≤ 8, skipping sub-city wards/neighborhoods)
     const fallbackMatch = !anyNameMatch && !areaMatch && !countryMatch && !categoryMatch
@@ -229,14 +229,14 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
               [0] ?? null
         : null;
 
-    const match = anyNameMatch ?? countryMatch ?? areaMatch ?? categoryMatch ?? fallbackMatch;
+    const match = anyNameMatch ?? countryMatch ?? categoryMatch ?? areaMatch ?? fallbackMatch;
     if (!match) return null;
 
     const matchedBy = nameMatch ? "name"
         : containsMatch ? "contains"
         : countryMatch ? "country_admin_level"
-        : areaMatch ? "area_contains"
         : categoryMatch ? "category"
+        : areaMatch ? "area_contains"
         : "fallback";
 
     const props = match.properties;
