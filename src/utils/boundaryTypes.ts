@@ -9,6 +9,11 @@ export interface CityBoundaryRequest {
     area?: string;
 }
 
+export interface CountryCodeRequest {
+    lat: number;
+    lng: number;
+}
+
 // --- Geoapify ---
 
 export interface GeoapifyFeature {
@@ -32,6 +37,29 @@ export interface GeoapifyFeature {
 export interface GeoapifyResponse {
     type: string;
     features: GeoapifyFeature[];
+}
+
+export interface GeoapifyReverseFeature {
+    type: string;
+    properties: {
+        country?: string;
+        country_code?: string;
+        formatted?: string;
+        result_type?: string;
+        lat?: number;
+        lon?: number;
+    };
+}
+
+export interface GeoapifyReverseResponse {
+    type: string;
+    features: GeoapifyReverseFeature[];
+}
+
+export interface GeoapifyCountryCodeResult {
+    countryCode: string;
+    country?: string;
+    formatted?: string;
 }
 
 export interface GeoapifyMatchResult {
