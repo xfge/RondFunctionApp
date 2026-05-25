@@ -1,15 +1,8 @@
 import { inspect } from "util";
-import {
-    GeoapifyResponse,
-    GeoapifyFeature,
-    GeoapifyMatchResult,
-    GeoapifyReverseResponse,
-    GeoapifyCountryCodeResult,
-} from "./boundaryTypes";
+import { GeoapifyResponse, GeoapifyFeature, GeoapifyMatchResult } from "./boundaryTypes";
 import { fetchWithRetry } from "./httpUtils";
 
 const GEOAPIFY_BOUNDARIES_URL = "https://api.geoapify.com/v1/boundaries/part-of";
-const GEOAPIFY_REVERSE_URL = "https://api.geoapify.com/v1/geocode/reverse";
 
 /** Geoapify category keys for city-level matching, in priority order. */
 const CITY_CATEGORIES = ["administrative.county_level", "administrative.city_level"];
@@ -96,38 +89,6 @@ export async function fetchGeoapifyMatch(
     if (!features.length) return null;
 
     return extractMatch(data!.features, city, area, countryCode);
-}
-
-/**
- * Resolve coordinates to an ISO 3166-1 alpha-2 country code using Geoapify
- * reverse geocoding. Returns null when the coordinates are not inside a country.
- */
-export async function fetchGeoapifyCountryCode(
-    lat: number,
-    lng: number,
-): Promise<GeoapifyCountryCodeResult | null> {
-    const apiKey = process.env.GEOAPIFY_API_KEY;
-    if (!apiKey) {
-        throw new Error("GEOAPIFY_API_KEY environment variable is not set");
-    }
-
-    const url = new URL(GEOAPIFY_REVERSE_URL);
-    url.searchParams.set("lat", String(lat));
-    url.searchParams.set("lon", String(lng));
-    url.searchParams.set("type", "country");
-    url.searchParams.set("limit", "1");
-    url.searchParams.set("apiKey", apiKey);
-
-    const data = await fetchWithRetry(url.toString()) as GeoapifyReverseResponse | null;
-    const feature = data?.features?.[0];
-    const rawCountryCode = feature?.properties?.country_code;
-    if (!rawCountryCode) return null;
-
-    return {
-        countryCode: rawCountryCode.toUpperCase(),
-        country: feature.properties.country,
-        formatted: feature.properties.formatted,
-    };
 }
 
 /** Strip diacritics/accents and special letters for fuzzy name comparison. */
