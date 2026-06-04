@@ -208,9 +208,18 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     //    regions like California and confuse users when the city itself missed.
     const areaMatch = undefined;
 
-    // 5. Do not fall back to an arbitrary containing admin boundary. Returning
-    //    404 is less confusing than drawing a broader area with a different name.
-    const fallbackMatch = null;
+    // 5. Fallback: most specific boundary (highest admin_level ≤ 8, skipping sub-city wards/neighborhoods)
+    const fallbackMatch = !anyNameMatch && !areaMatch && !countryMatch && !categoryMatch
+        ? [...features]
+              .filter((f) => {
+                  const level = f.properties.datasource?.raw?.admin_level ?? 0;
+                  return f.properties.datasource?.raw?.osm_id != null && level <= 8;
+              })
+              .sort((a, b) =>
+                  (b.properties.datasource?.raw?.admin_level ?? 0) -
+                  (a.properties.datasource?.raw?.admin_level ?? 0))
+              [0] ?? null
+        : null;
 
     const match = anyNameMatch ?? countryMatch ?? categoryMatch ?? areaMatch ?? fallbackMatch;
     if (!match) return null;
