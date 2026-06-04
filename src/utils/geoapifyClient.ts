@@ -4,9 +4,6 @@ import { fetchWithRetry } from "./httpUtils";
 
 const GEOAPIFY_BOUNDARIES_URL = "https://api.geoapify.com/v1/boundaries/part-of";
 
-/** Geoapify category keys for city-level matching, in priority order. */
-const CITY_CATEGORIES = ["administrative.county_level", "administrative.city_level"];
-
 /**
  * Country-specific city admin_level overrides.
  * Geoapify sometimes categorises cities under unexpected categories
@@ -103,9 +100,10 @@ function normalize(s: string): string {
         .normalize("NFD").replace(/\p{M}/gu, "");
 }
 
-/** Pick the matching feature by name, area, category, or admin_level and return its OSM relation ID. */
+/** Pick the matching feature by name, area, or configured admin_level and return its OSM relation ID. */
 function extractMatch(features: GeoapifyFeature[], city: string, area?: string, countryCode?: string): GeoapifyMatchResult | null {
     const cityNorm = normalize(city);
+    const code = countryCode?.toUpperCase();
 
     /** Collect all names (primary + international) for a feature. */
     const featureNames = (feature: GeoapifyFeature): string[] => {
@@ -191,7 +189,7 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
 
     // 2. Country-specific admin_level override (e.g. TW cities at admin_level=4).
     //    Tries the configured levels in order and uses the first feature found.
-    const cityAdminLevels = countryCode ? COUNTRY_CITY_ADMIN_LEVEL[countryCode] : undefined;
+    const cityAdminLevels = code ? COUNTRY_CITY_ADMIN_LEVEL[code] : undefined;
     const anyNameMatch = nameMatch ?? containsMatch;
 
     const countryMatch = !anyNameMatch && cityAdminLevels != null
@@ -201,12 +199,9 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         }), undefined)
         : undefined;
 
-    // 3. Category match
-    const categoryMatch = !anyNameMatch && !countryMatch ? features.find((feature) => {
-        const cats = feature.properties.categories;
-        if (!cats) return false;
-        return CITY_CATEGORIES.some((c) => cats.includes(c));
-    }) : undefined;
+    // 3. Category matches are deliberately ignored for city lookups because
+    //    they can select broader containing boundaries such as counties/states.
+    const categoryMatch = undefined;
 
     // 4. Area match: area name against feature names (case- and diacritic-insensitive).
     //    Keep this after category matching because short device-reported strings
@@ -216,18 +211,9 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
         ? findContainsMatch(normalize(area))
         : undefined;
 
-    // 5. Fallback: most specific boundary (highest admin_level ≤ 8, skipping sub-city wards/neighborhoods)
-    const fallbackMatch = !anyNameMatch && !areaMatch && !countryMatch && !categoryMatch
-        ? [...features]
-              .filter((f) => {
-                  const level = f.properties.datasource?.raw?.admin_level ?? 0;
-                  return f.properties.datasource?.raw?.osm_id != null && level <= 8;
-              })
-              .sort((a, b) =>
-                  (b.properties.datasource?.raw?.admin_level ?? 0) -
-                  (a.properties.datasource?.raw?.admin_level ?? 0))
-              [0] ?? null
-        : null;
+    // 5. Do not fall back to an arbitrary containing admin boundary. Returning
+    //    404 is less confusing than drawing a broader area with a different name.
+    const fallbackMatch = null;
 
     const match = anyNameMatch ?? countryMatch ?? categoryMatch ?? areaMatch ?? fallbackMatch;
     if (!match) return null;
