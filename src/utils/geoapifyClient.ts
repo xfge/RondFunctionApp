@@ -100,7 +100,7 @@ function normalize(s: string): string {
         .normalize("NFD").replace(/\p{M}/gu, "");
 }
 
-/** Pick the matching feature by name, area, or configured admin_level and return its OSM relation ID. */
+/** Pick the matching feature by name or configured admin_level and return its OSM relation ID. */
 function extractMatch(features: GeoapifyFeature[], city: string, area?: string, countryCode?: string): GeoapifyMatchResult | null {
     const cityNorm = normalize(city);
     const code = countryCode?.toUpperCase();
@@ -203,13 +203,10 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
     //    they can select broader containing boundaries such as counties/states.
     const categoryMatch = undefined;
 
-    // 4. Area match: area name against feature names (case- and diacritic-insensitive).
-    //    Keep this after category matching because short device-reported strings
-    //    like "CA" can otherwise select broad regions such as California before
-    //    a county/city-level category match.
-    const areaMatch = !anyNameMatch && !countryMatch && !categoryMatch && area
-        ? findContainsMatch(normalize(area))
-        : undefined;
+    // 4. Area matches are deliberately ignored for city lookups. Device area
+    //    values can be short region codes such as "CA", which fuzzy-match broad
+    //    regions like California and confuse users when the city itself missed.
+    const areaMatch = undefined;
 
     // 5. Do not fall back to an arbitrary containing admin boundary. Returning
     //    404 is less confusing than drawing a broader area with a different name.
