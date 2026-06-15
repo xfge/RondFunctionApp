@@ -139,11 +139,11 @@ async function handleAmapBoundary(
         return createSuccessResponse({ source: "amap", osm_id: osmId, cached: true, geojson: cached });
     }
 
-    let geojson = await fetchAmapBoundary(chineseName);
+    let geojson = await fetchAmapBoundary(chineseName, (...args) => context.log(...args));
     let usedName = chineseName;
     if (!geojson && fallbackName) {
         context.log(`AMap miss for "${chineseName}", retrying with fallback "${fallbackName}"`);
-        geojson = await fetchAmapBoundary(fallbackName);
+        geojson = await fetchAmapBoundary(fallbackName, (...args) => context.log(...args));
         usedName = fallbackName;
     }
     if (!geojson) {

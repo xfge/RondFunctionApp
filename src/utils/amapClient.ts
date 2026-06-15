@@ -8,7 +8,10 @@ const AMAP_DISTRICT_URL = "https://restapi.amap.com/v3/config/district";
  * Fetch city boundary from AMap district API using a Chinese city name.
  * Returns a GeoJSON FeatureCollection or null on failure.
  */
-export async function fetchAmapBoundary(chineseCityName: string): Promise<object | null> {
+export async function fetchAmapBoundary(
+    chineseCityName: string,
+    log?: (...args: any[]) => void,
+): Promise<object | null> {
     const apiKey = process.env.AMAP_API_KEY;
     if (!apiKey) {
         throw new Error("AMAP_API_KEY environment variable is not set");
@@ -25,7 +28,11 @@ export async function fetchAmapBoundary(chineseCityName: string): Promise<object
 
     if (data.status !== "1" || !data.districts?.length) return null;
 
-    const district = data.districts[0];
+    const district = data.districts.find((d) => namesEqual(d.name, chineseCityName));
+    if (!district) {
+        log?.(`AMap returned no exact match for "${chineseCityName}"; candidates: ${data.districts.map((d) => `${d.name}/${d.adcode}/${d.level}`).join(", ")}`);
+        return null;
+    }
     if (!district.polyline) return null;
 
     return amapPolylineToGeoJSON(district.polyline, {
@@ -34,4 +41,8 @@ export async function fetchAmapBoundary(chineseCityName: string): Promise<object
         level: district.level,
         center: district.center,
     });
+}
+
+function namesEqual(a: string, b: string): boolean {
+    return a.trim() === b.trim();
 }
