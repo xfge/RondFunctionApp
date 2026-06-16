@@ -1,6 +1,7 @@
 import { inspect } from "util";
 import { GeoapifyResponse, GeoapifyFeature, GeoapifyMatchResult } from "./boundaryTypes";
 import { fetchWithRetry } from "./httpUtils";
+import { normalizeName } from "./nameNormalize";
 
 const GEOAPIFY_BOUNDARIES_URL = "https://api.geoapify.com/v1/boundaries/part-of";
 
@@ -88,21 +89,9 @@ export async function fetchGeoapifyMatch(
     return extractMatch(data!.features, city, area, countryCode);
 }
 
-/** Strip diacritics/accents and special letters for fuzzy name comparison. */
-function normalize(s: string): string {
-    return s.trim().toLowerCase()
-        .replace(/\u0131/g, "i")    // Turkish ı
-        .replace(/\u0142/g, "l")    // Polish ł
-        .replace(/\u00f8/g, "o")    // Scandinavian ø
-        .replace(/\u0111/g, "d")    // Vietnamese/Croatian đ
-        .replace(/\u00e6/g, "ae")   // æ ligature
-        .replace(/\u00df/g, "ss")   // German ß
-        .normalize("NFD").replace(/\p{M}/gu, "");
-}
-
 /** Pick the matching feature by name or configured admin_level and return its OSM relation ID. */
 function extractMatch(features: GeoapifyFeature[], city: string, area?: string, countryCode?: string): GeoapifyMatchResult | null {
-    const cityNorm = normalize(city);
+    const cityNorm = normalizeName(city);
     const code = countryCode?.toUpperCase();
 
     /** Collect all names (primary + international) for a feature. */
@@ -129,12 +118,12 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
 
     /** Check if any of a feature's names match the target exactly. */
     const featureNamesMatch = (feature: GeoapifyFeature, target: string): boolean =>
-        featureNames(feature).some((n) => normalize(n) === target);
+        featureNames(feature).some((n) => normalizeName(n) === target);
 
     /** Return the first feature name that contains (or is contained by) the target, or undefined. */
     const featureNameContaining = (feature: GeoapifyFeature, target: string): string | undefined =>
         featureNames(feature).find((n) => {
-            const norm = normalize(n);
+            const norm = normalizeName(n);
             return norm.includes(target) || target.includes(norm);
         });
 
@@ -179,7 +168,7 @@ function extractMatch(features: GeoapifyFeature[], city: string, area?: string, 
             return wb - wa;
         });
     const nameMatch =
-        sortedByLevel.find((f) => f.properties.name != null && normalize(f.properties.name) === cityNorm) ??
+        sortedByLevel.find((f) => f.properties.name != null && normalizeName(f.properties.name) === cityNorm) ??
         sortedByLevel.find((f) => featureNamesMatch(f, cityNorm));
 
     // 1b. Contains name match: e.g. "乌鲁木齐" in "乌鲁木齐市", "El Torno" in "Municipio El Torno"

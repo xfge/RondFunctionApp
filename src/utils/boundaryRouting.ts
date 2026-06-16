@@ -1,3 +1,5 @@
+import { normalizeDecoratedCityLabel, normalizeName } from "./nameNormalize";
+
 /** City-states with hardcoded OSM IDs and AMap Chinese names. */
 const CITY_STATES: Record<string, { osmId: number; amapName?: string; aliases?: string[] }> = {
     HK: {
@@ -57,8 +59,9 @@ export function resolveRoute(countryCode?: string, deviceRegion?: string, city?:
     // alias (HK/MO). AMap serves these boundaries, so route to AMap using the
     // hardcoded osmId and Chinese name.
     if (code === "CN" && city) {
+        const normalizedCity = normalizeDecoratedCityLabel(city);
         for (const cs of Object.values(CITY_STATES)) {
-            if (cs.amapName && cs.aliases?.some((alias) => namesEqual(alias, city))) {
+            if (cs.amapName && cs.aliases?.some((alias) => normalizeName(alias) === normalizedCity)) {
                 return { source: "amap", osmId: cs.osmId, amapName: cs.amapName };
             }
         }
@@ -66,8 +69,4 @@ export function resolveRoute(countryCode?: string, deviceRegion?: string, city?:
 
     // Regular cities
     return { source: code === "CN" ? "amap" : "osm" };
-}
-
-function namesEqual(a: string, b: string): boolean {
-    return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
