@@ -1,6 +1,7 @@
 import { inspect } from "util";
 import { GeoapifyResponse, GeoapifyFeature, GeoapifyMatchResult } from "./boundaryTypes";
 import { fetchWithRetry } from "./httpUtils";
+import { normalizeName } from "./nameNormalize";
 
 const GEOAPIFY_BOUNDARIES_URL = "https://api.geoapify.com/v1/boundaries/part-of";
 
@@ -89,16 +90,7 @@ export async function fetchGeoapifyMatch(
 }
 
 /** Strip diacritics/accents and special letters for fuzzy name comparison. */
-function normalize(s: string): string {
-    return s.trim().toLowerCase()
-        .replace(/\u0131/g, "i")    // Turkish ı
-        .replace(/\u0142/g, "l")    // Polish ł
-        .replace(/\u00f8/g, "o")    // Scandinavian ø
-        .replace(/\u0111/g, "d")    // Vietnamese/Croatian đ
-        .replace(/\u00e6/g, "ae")   // æ ligature
-        .replace(/\u00df/g, "ss")   // German ß
-        .normalize("NFD").replace(/\p{M}/gu, "");
-}
+const normalize = normalizeName;
 
 /** Pick the matching feature by name or configured admin_level and return its OSM relation ID. */
 function extractMatch(features: GeoapifyFeature[], city: string, area?: string, countryCode?: string): GeoapifyMatchResult | null {

@@ -1,5 +1,6 @@
 import { AmapDistrictResponse } from "./boundaryTypes";
 import { fetchWithRetry } from "./httpUtils";
+import { normalizeName } from "./nameNormalize";
 import { amapPolylineToGeoJSON } from "./polylineToGeoJSON";
 
 const AMAP_DISTRICT_URL = "https://restapi.amap.com/v3/config/district";
@@ -44,5 +45,5 @@ export async function fetchAmapBoundary(
 }
 
 function namesEqual(a: string, b: string): boolean {
-    return a.trim() === b.trim();
+    return normalizeName(a) === normalizeName(b);
 }

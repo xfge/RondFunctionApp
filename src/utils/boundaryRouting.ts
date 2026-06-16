@@ -1,3 +1,5 @@
+import { normalizeName } from "./nameNormalize";
+
 /** City-states with hardcoded OSM IDs and AMap Chinese names. */
 const CITY_STATES: Record<string, { osmId: number; amapName?: string; aliases?: string[] }> = {
     HK: {
@@ -69,5 +71,5 @@ export function resolveRoute(countryCode?: string, deviceRegion?: string, city?:
 }
 
 function namesEqual(a: string, b: string): boolean {
-    return a.trim().toLowerCase() === b.trim().toLowerCase();
+    return normalizeName(a) === normalizeName(b);
 }
